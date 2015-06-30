@@ -1,0 +1,17 @@
+## C lib
+useDynLib(unfoldr, .registration = TRUE, .fixes = "C_")
+
+## Exports
+#exportPattern("^[[:alpha:]]+")
+export(simSphereSystem,getSphereSystem,setupSphereSystem,planarSection,binning1d,coefficientMatrixSpheres,em.saltykov,binning1d)
+export(simSpheroidSystem,getSpheroidSystem,setupSpheroidSystem,verticalSection,coefficientMatrixSpheroids,binning3d)
+export(em.spheroids,setbreaks,trivarHist,getAngle,parameters3d,parameterEstimates)
+export(sectionProfiles)
+
+#S3 Methods
+S3method("unfold","prolate")
+S3method("unfold","oblate")
+S3method("unfold","numeric")
+export(unfold)
+
+importFrom("stats", "na.omit")

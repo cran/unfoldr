@@ -45,7 +45,6 @@ NULL
 #' @references
 #' 	Bene\eqn{\check{\textrm{s}}}, V. and Rataj, J. Stochastic Geometry: Selected Topics Kluwer Academic Publishers, Bosten, 2004
 em.spheroids <- function(P,F,maxIt,nCores=getOption("par.unfoldr",1)) {	
-	cat("em.spheroids(): using number of cores: ",nCores,"\n")
 	.Call(C_EMS,P,F,list("maxSteps"=maxIt,"nCores"=nCores))
 }
 
@@ -111,10 +110,18 @@ unfold.numeric <- function(sp,nclass,maxIt=64,nCores=getOption("par.unfoldr",1),
 	breaks <- seq(0,max(sp), length.out=nclass)
 
 	# Input histogram
-	N_A <- binning1d(sp,breaks)
-	N_V <- em.saltykov(N_A,breaks,maxIt)
+	#N_V <- em.saltykov(N_A,breaks,maxIt)
+	y <- binning1d(sp,breaks)
+		
+	n <- length(y)
+	p <- .C(C_em_saltykov_p, as.integer(n),as.numeric(breaks),
+			p=as.vector(matrix(0,n,n)))$p
+	
+	theta <- y+1.0e-6
+	theta <- .C(C_em_saltykov,as.integer(n), as.integer(maxIt),
+				as.numeric(p),as.numeric(y),theta=as.numeric(theta))$theta
 
-	structure(list("N_A"=N_A,"N_V"=N_V,"breaks"=breaks),
+	structure(list("N_A"=y,"N_V"=theta,"P"=p,"breaks"=breaks),
 			class=c("unfold",class(sp)))
 }
 

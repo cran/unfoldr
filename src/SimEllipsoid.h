@@ -1,10 +1,3 @@
-/**
- * SimEllipsoid.h
- *
- *  Created on: 10.01.2014
- *      Author: franke
- */
-
 #ifndef SIMELLIPSOID_H_
 #define SIMELLIPSOID_H_
 

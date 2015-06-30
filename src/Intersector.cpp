@@ -1,10 +1,3 @@
-/*
- * IntersectorSpheroidPlane.cpp
- *
- *  Created on: 31.07.2014
- *      Author: franke
- */
-
 #include "Intersector.h"
 
 namespace STGM

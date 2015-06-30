@@ -1,9 +1,3 @@
-/** @file  GeometricPrimitives.cpp
- *
- *  @date 02-14-2014
- *  @uthor: franke
- */
-
 #include "GeometricPrimitives.h"
 
 namespace STGM {

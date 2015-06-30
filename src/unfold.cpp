@@ -117,8 +117,9 @@ extern_findIndex(double *x, double *v, int *n, int *idx) {
 }
 
 struct K_Oblate_s {
-  K_Oblate_s(double *_A, double *_alpha, double *_S, double *_a, double *_Theta, double *_s) :
-    A(_A), alpha(_alpha),  S(_S),a(_a),  Theta(_Theta),  s(_s)
+  K_Oblate_s(double *size, double *angle, double *shape) :
+    A(size), alpha(angle), S(shape),
+    a(size), Theta(angle), s(shape)
   {};
 
   ~K_Oblate_s() {};
@@ -185,8 +186,9 @@ struct K_Oblate_s {
 };
 
 struct K_Prolate_s {
-   K_Prolate_s(double *_A, double *_alpha, double *_S, double *_a, double *_Theta, double *_s) :
-    A(_A),  alpha(_alpha),  S(_S), a(_a),  Theta(_Theta),  s(_s)
+   K_Prolate_s(double *size, double *angle, double *shape) :
+    A(size), alpha(angle), S(shape),
+    a(size), Theta(angle), s(shape)
    {};
 
    ~K_Prolate_s() {};
@@ -239,7 +241,7 @@ struct K_Prolate_s {
                K2 -= tmp*div;    /* K2=Zroot*eint-tmp*sqrt(Z-MIN(SQR(S)/SQR(s),Z)); */
            }
            if(!R_FINITE(K2) || ISNAN(K2))
-             error("K(): K2 value error.");
+              error("K(): K2 value error.");
        }
 
        if(S>tmpS)
@@ -514,16 +516,16 @@ SEXP CoefficientMatrixSpheroids(SEXP R_A, SEXP R_alpha, SEXP R_S,
 
 #ifdef _OPENMP
  nthreads=MAX(asInteger(VECTOR_ELT(R_args,1)),1);
-#else
- int nthreads = 1;
 #endif
 
-  Rprintf("Number of threads: %d \n",nthreads);
 
+  /* spatial class limits equal planar ones in this current implementation */
   SEXP indx;
   PROTECT(indx = NEW_INTEGER(6));
-  INTEGER(indx)[0] = LENGTH(R_a)-1;  INTEGER(indx)[1] = LENGTH(R_Theta)-1;  INTEGER(indx)[2] = LENGTH(R_s)-1; /* spatial parameters for size, orientation, shape */
-  INTEGER(indx)[3] = LENGTH(R_A)-1;  INTEGER(indx)[4] = LENGTH(R_alpha)-1;  INTEGER(indx)[5] = LENGTH(R_S)-1; /* and planar parameters */
+  /* spatial parameters for size, orientation, shape */
+  INTEGER(indx)[0] = LENGTH(R_a)-1;  INTEGER(indx)[1] = LENGTH(R_Theta)-1;  INTEGER(indx)[2] = LENGTH(R_s)-1;
+  /* and planar parameters */
+  INTEGER(indx)[3] = LENGTH(R_A)-1;  INTEGER(indx)[4] = LENGTH(R_alpha)-1;  INTEGER(indx)[5] = LENGTH(R_S)-1;
 
   SEXP R_P;
   PROTECT(R_P=allocArray(REALSXP,indx));
@@ -531,14 +533,14 @@ SEXP CoefficientMatrixSpheroids(SEXP R_A, SEXP R_alpha, SEXP R_S,
   CArray6 P(R_P);
   P.clear();
 
-  double *A=REAL(R_A), *a=REAL(R_a),*alpha=REAL(R_alpha),
-         *S=REAL(R_S), *s=REAL(R_s),*Theta=REAL(R_Theta);
+  double *A=REAL(R_A), *S=REAL(R_S), *alpha=REAL(R_alpha);
+  /* double *a=REAL(R_a), *s=REAL(R_s), *Theta=REAL(R_Theta); */
 
   if ( !strcmp( translateChar(STRING_ELT(VECTOR_ELT(R_args,0),0)), "prolate" )) {
-    K_Prolate_s p(A,alpha,S,a,Theta,s);
+    K_Prolate_s p(A,alpha,S);
     KFunctor<K_Prolate_s>(P,p);
   } else {
-    K_Oblate_s p(A,alpha,S,a,Theta,s);
+    K_Oblate_s p(A,alpha,S);
     KFunctor<K_Oblate_s>(P,p);
   }
 

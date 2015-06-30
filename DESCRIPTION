@@ -1,6 +1,6 @@
 Package: unfoldr
 Title: Stereological Unfolding for Spheroidal Particles
-Version: 0.2
+Version: 0.3
 Date: 2015-06-30
 Authors@R: c(person("Markus Baaske", role = c("aut", "cre"),
 			 email = "markus.baaske@math.tu-freiberg.de"),
@@ -23,6 +23,6 @@ Suggests: rgl
 License: GPL-2
 Repository: CRAN
 LazyData: no
-Packaged: 2015-07-03 12:20:03 UTC; franke
+Packaged: 2015-07-07 07:30:05 UTC; franke
 NeedsCompilation: yes
-Date/Publication: 2015-07-03 15:16:24
+Date/Publication: 2015-07-07 13:17:55

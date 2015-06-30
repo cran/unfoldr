@@ -1,10 +1,3 @@
-/**
- * discretization.h
- *
- *  Created on: 18.03.2015
- *      Author: franke
- */
-
 #ifndef BINNING_H_
 #define BINNING_H_
 

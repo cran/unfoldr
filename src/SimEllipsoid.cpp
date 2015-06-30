@@ -1,10 +1,3 @@
-/*
- * SimEllipsoid.cpp
- *
- *  Created on: 10.01.2014
- *      Author: franke
- */
-
 #define MAX_ITER 100
 
 #include "SimEllipsoid.h"

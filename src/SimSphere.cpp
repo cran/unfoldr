@@ -1,10 +1,3 @@
-/**
- * simSphere.cpp
- *
- *  Created on: 07.05.2015
- *      Author: franke
- */
-
 #include "SimSphere.h"
 
 //static locals

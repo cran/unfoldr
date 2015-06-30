@@ -1,49 +1,44 @@
-/**
- * utils.h
- *
- */
-
 #ifndef UTILS_H_
 #define UTILS_H_
 
 #include "Rheaders.h"
 
-/////////////////////////////  internally used helpers //////////////////////////////////////
+/* functions with R types */
 
 void *getExternalPtr(SEXP ext);
 void checkPtr(SEXP ptr,SEXP type);
 Rboolean isNullPtr(SEXP ptr, SEXP type);
 
-/////////////////////////////////////////////////////////////////////////////////////////////
-
-
 SEXP getVar(SEXP name, SEXP rho);
 SEXP getListElement (SEXP list, const char *str);
 
-namespace STGM {
-  extern "C"  void real_eval(double *a, int *n, double *evalf, int *err);
-}
+/* internally used */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/*  real eigenvalue decomposition */
+void real_eval(double *a, int *n, double *evalf, int *err);
+/* pointer to some R's random generators */
+typedef double (*rdist2_t)(double, double);
+/* a const dummy function */
+inline double rconst(double x, double dummy=0) { return x; }
 
 
-/////////////////////////////////////////////////////////////////////////////////////////////
-
-/**
- * R call data struct
- *
- * \brief fname,args and call could also be
- *        lists of names, args and calls to functions
- *
- * */
+/*
+ * R call data struct, fname,args and call could also be
+ * lists of names, args and calls to functions
+ */
 typedef struct R_Calldata_s {
     SEXP fname,args,rho,call;
     int nprotect;
 } *R_Calldata;
 
 
-typedef void (*rdist1_t)(double *, double);
-typedef double (*rdist2_t)(double, double);
-
-inline double rconst(double x, double dummy=0) { return x; }
+#ifdef __cplusplus
+}
+#endif
 
 template<typename R_TYPE>
 struct R_eval_t {
@@ -63,8 +58,6 @@ struct R_eval_t<double> {
   }
 };
 
-//template<double F(double,double) >
-//template<rdist2_t F>
 template<typename F >
 struct R_rndGen_t {
   double p,q;

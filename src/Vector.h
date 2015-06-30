@@ -1,7 +1,7 @@
 /**
  * @file Vector.h
  * @date 17.02.2014
- * @author: franke
+ * @author: M. Baaske
  */
 
 #ifndef VECTOR_H_

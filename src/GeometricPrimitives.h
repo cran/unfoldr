@@ -1,10 +1,3 @@
-/**
- * @file GeomoetricPrimitives.h
- *
- *  @author: franke
- *  @date  2014-02-11
- */
-
 #ifndef GEOMETRIC_PRIMITIVES_H_
 #define GEOMETRIC_PRIMITIVES_H_
 

@@ -1,10 +1,3 @@
-/*
- * simSphere.h
- *
- *  Created on: 07.05.2015
- *      Author: franke
- */
-
 #ifndef SRC_SIMSPHERE_H_
 #define SRC_SIMSPHERE_H_
 

@@ -249,9 +249,7 @@ simSpheroidSystem <- function(theta, size, shape="const",orientation="rbetaiso",
 #'  @example inst/examples/coeffarray.R
 coefficientMatrixSpheroids <- function(breaks, stype=c("prolate","oblate"),
 								check=TRUE,nCores=getOption("par.unfoldr",1))
-{
-	cat("coefficientMatrixSpheroids(): using number of cores: ",nCores,"\n")
-	
+{			
 	stype <- match.arg(stype)	
 	it <- match(names(breaks), c("size","angle","shape"))
 	if (length(it)==0 || anyNA(it))

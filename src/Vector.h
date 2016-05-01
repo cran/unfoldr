@@ -1,16 +1,26 @@
 /**
  * @file Vector.h
  * @date 17.02.2014
- * @author: M. Baaske
+ * @author: franke
  */
 
 #ifndef VECTOR_H_
 #define VECTOR_H_
 
-#include <vector>
-#include "Rheaders.h"
+#include <R.h>
 
-template<typename T> inline static T sqr(T x) { return x * x; }
+#include <vector>
+
+template<class T>
+inline T SQR(const T a) {return a*a;}
+
+template<class T>
+inline const T &MAX(const T &a, const T &b)
+{return b > a ? (b) : (a);}
+
+template<class T>
+inline const T &MIN(const T &a, const T &b)
+{return b < a ? (b) : (a);}
 
 namespace STGM {
 
@@ -32,6 +42,12 @@ struct CPoint {
   const value_t &operator[](size_t i) const { return p[i]; }
 
   bool operator== (const CPoint &p_) const;
+
+  void Normalize();
+  value_t Length() const;
+
+  const value_t* ptr() const { return &p[0]; }
+  value_t* ptr()  { return &p[0]; }
 
 };
 
@@ -82,6 +98,21 @@ bool CPoint<N>::operator==(const CPoint<N>& x) const {
           return false;
   }
   return true;
+}
+
+template <size_t N>
+inline typename CPoint<N>::value_t CPoint<N>::Length() const {
+  value_t tmp=0;
+  for (size_t i=0; i<n_; i++)
+    tmp += SQR(p[i]);
+   return sqrt(tmp);
+}
+
+template <size_t N>
+inline void CPoint<N>::Normalize() {
+   const double invLen = 1.0 / Length();
+   for (size_t i=0; i<n_; i++)
+     p[i] *= invLen;
 }
 
 typedef CPoint<2> CPoint2d;
@@ -243,7 +274,7 @@ template <class T,size_t N>
 inline typename CVector<T,N>::value_t CVector<T,N>::Length() const {
   value_t tmp=0;
   for (size_t i=0; i<n_; i++)
-    tmp += sqr(data[i]);
+    tmp += SQR(data[i]);
    return sqrt(tmp);
 }
 
@@ -282,7 +313,28 @@ class CMatrix2d {
   double *operator[](int i) { return data[i]; }
   const double *operator[](int i) const { return data[i]; }
 
+  void Transpose() {
+      for (int i = 0; i < 1; ++i) {
+        for (int j = i + 1; j < 2; ++j) {
+          std::swap(data[i][j], data[j][i]);
+        }
+      }
+  }
+
 };
+
+inline const CMatrix2d operator*(const CMatrix2d &a, const CMatrix2d &b) {
+    CMatrix2d c;
+    for (int i = 0; i < 2; ++i) {
+      for (int j = 0; j < 2; ++j) {
+        c[i][j] = 0.0;
+        for (int k = 0; k < 2; ++k) {
+          c[i][j] += a[i][k] * b[k][j];
+        }
+      }
+    }
+    return c;
+}
 
 
 class CMatrix3d {

@@ -1,3 +1,8 @@
+/**
+ * utils.h
+ *
+ */
+
 #ifndef UTILS_H_
 #define UTILS_H_
 
@@ -18,8 +23,6 @@ SEXP getListElement (SEXP list, const char *str);
 extern "C" {
 #endif
 
-/*  real eigenvalue decomposition */
-void real_eval(double *a, int *n, double *evalf, int *err);
 /* pointer to some R's random generators */
 typedef double (*rdist2_t)(double, double);
 /* a const dummy function */
@@ -31,7 +34,7 @@ inline double rconst(double x, double dummy=0) { return x; }
  * lists of names, args and calls to functions
  */
 typedef struct R_Calldata_s {
-    SEXP fname,args,rho,call;
+    SEXP fname,args,rho,label,call;
     int nprotect;
 } *R_Calldata;
 
@@ -39,6 +42,7 @@ typedef struct R_Calldata_s {
 #ifdef __cplusplus
 }
 #endif
+
 
 template<typename R_TYPE>
 struct R_eval_t {
@@ -52,19 +56,58 @@ template<>
 struct R_eval_t<double> {
   SEXP call, rho;
   R_eval_t(SEXP _call, SEXP _rho) :  call(_call), rho(_rho)
-  {};
+  {
+  };
   inline double operator()() {
     return asReal(eval(call,rho));
   }
 };
 
+//template<typename F >
+//struct R_rndGen_t {
+//  double mx,sdx;
+//  F fn;
+//  R_rndGen_t(double p,double q, F rdist) : mx(p), sdx(q), fn(rdist) {};
+//  inline double operator()() { return fn(mx,sdx); }
+//};
+
+
+struct R_rlnorm_t {
+  double mx,sdx;
+  R_rlnorm_t(double p,double q)
+    : mx(p), sdx(q)
+  {};
+
+  inline double operator()() {  return rlnorm(mx,sdx); }
+};
+
 template<typename F >
 struct R_rndGen_t {
-  double p,q;
-  F fn;
-  R_rndGen_t(double _p,double _q, F _fn) : p(_p), q(_q), fn(_fn) {};
-  inline double operator()() { return fn(p,q); }
+  F rdist2;
+  double mx,sdx;
+
+  R_rndGen_t(double p,double q, const char* fname)
+    : mx(p), sdx(q)
+  {
+    if ( !strcmp(fname, "rbeta" )) {
+        rdist2=rbeta;
+    } else if(!strcmp(fname, "rlnorm")) {
+        rdist2=rlnorm;
+    } else if(!strcmp(fname, "rgamma")) {
+        rdist2=rgamma;
+    } else if(!strcmp(fname, "runif" )) {
+        rdist2=rweibull;
+    } else if(!strcmp(fname, "const" )) {
+        rdist2=rconst;
+    } else {
+        error("Undefined random generating function for radii distribution");
+    }
+
+  };
+
+  inline double operator()() { return rdist2(mx,sdx); }
 };
+
 
 /**
  * \brief Show aruments of R function call
@@ -73,6 +116,15 @@ struct R_rndGen_t {
  * @return
  */
 SEXP showArgs(SEXP args);
+
+/**
+ *
+ * @param R_fname
+ * @param R_arg
+ * @param R_rho
+ * @return
+ */
+SEXP getSingleCall(SEXP R_fname, SEXP R_arg, SEXP R_rho);
 
 /**
  * \brief Define R call to user function from C level

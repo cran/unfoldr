@@ -25,13 +25,13 @@ typedef enum { EMPTY=0 } IntersectionType;
     IntersectorSpheroid(CSpheroid &_spheroid, CPlane &_plane, CPoint3d &_dimensions)
      : m_spheroid(_spheroid), m_plane(_plane), m_size(_dimensions)
     {
-      type = EMPTY;
+      m_type = EMPTY;
     };
 
     IntersectorSpheroid(CSpheroid &_spheroid, CPoint3d &_dimensions)
         : m_spheroid(_spheroid), m_size(_dimensions)
     {
-      type = EMPTY;
+      m_type = EMPTY;
     };
 
     virtual
@@ -68,7 +68,7 @@ typedef enum { EMPTY=0 } IntersectionType;
     }
 
   private:
-    int type;
+    IntersectionType m_type;
     CSpheroid m_spheroid;
     CPlane m_plane;
     CPoint3d m_size;

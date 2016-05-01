@@ -1,3 +1,10 @@
+/*
+ * IntersectorSpheroidPlane.cpp
+ *
+ *  Created on: 31.07.2014
+ *      Author: franke
+ */
+
 #include "Intersector.h"
 
 namespace STGM
@@ -27,7 +34,7 @@ namespace STGM
         break;
     }
 
-    double d = A[i][i]*A[j][j]-sqr(A[i][j]);
+    double d = A[i][i]*A[j][j]-SQR(A[i][j]);
     double s[] = { ( A[i][k]*A[j][j]-A[j][k]*A[i][j] ) /d ,
                   ( A[j][k]*A[i][i]-A[i][k]*A[i][j] ) /d };
 
@@ -36,7 +43,7 @@ namespace STGM
     // translate to xj=0 plane
     CVector3d m(m_spheroid.Center());
     m[k] = m[k] - m_plane.c;
-    double tmp = sqr(m[k])*(A[k][k]-sum);
+    double tmp = SQR(m[k])*(A[k][k]-sum);
 
     //condition for intersection
     return ( tmp <= 1);
@@ -51,7 +58,7 @@ namespace STGM
         /** Get indices according to the given plane for intersections only by XY,XZ,YZ planes  */
         int l;
         for(l=0; l<3; l++)
-            if(m_plane.n[l] == 1 || m_plane.n[l] == -1) break;
+          if(m_plane.n[l] == 1 || m_plane.n[l] == -1) break;
 
         switch (l) {
           case 0: // YZ
@@ -65,16 +72,16 @@ namespace STGM
             break;
         }
 
-        double d = A[i][i]*A[j][j]-sqr(A[i][j]);
+        double d = A[i][i]*A[j][j]-SQR(A[i][j]);
         double s[] = { ( A[i][k]*A[j][j]-A[j][k]*A[i][j] ) /d ,
-                      ( A[j][k]*A[i][i]-A[i][k]*A[i][j] ) /d };
+                      (  A[j][k]*A[i][i]-A[i][k]*A[i][j] ) /d };
 
         double sum = s[0]*s[0]*A[i][i] + s[0]*s[1]*A[i][j] + s[1]*s[0]*A[j][i] + s[1]*s[1]*A[j][j];
 
         // translate to xj=0 plane
         CVector3d m(m_spheroid.Center());
         m[k] = m[k] - m_plane.c;
-        double tmp = sqr(m[k])*(A[k][k]-sum);
+        double tmp = SQR(m[k])*(A[k][k]-sum);
 
         //condition for intersection
         if( tmp <= 1 )
@@ -110,7 +117,7 @@ namespace STGM
     if (dist<=m_sphere.r()) {
       CVector3d center(m_sphere.center());
       center-=sDist*m_plane.n;
-      double r = sqrt(fabs(sqr(m_sphere.r())-sqr(dist)));
+      double r = sqrt(fabs(SQR(m_sphere.r())-SQR(dist)));
       m_circle = CCircle3(center,r,m_plane.n,m_sphere.Id());
       return true;
     }

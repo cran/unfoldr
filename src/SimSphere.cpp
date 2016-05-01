@@ -1,3 +1,11 @@
+/**
+ * simSphere.cpp
+ *
+ *  Created on: 07.05.2015
+ *      Author: franke
+ */
+
+#include "unfold.h"
 #include "SimSphere.h"
 
 //static locals
@@ -33,12 +41,18 @@ R_Calldata buildRCallSpheres(SEXP R_param,SEXP R_cond) {
   return d;
 }
 
-void _sphere_finalizer(SEXP ext)
+void _free_spheres(STGM::CBoolSphereSystem *sp){
+  if(NULL==sp) return;
+  sp->~CBoolSphereSystem();
+  Free(sp);
+}
+
+void _sphere_finalizer(SEXP Rextp)
 {
-    checkPtr(ext, sphere_type_tag);
-    STGM::CBoolSphereSystem *sptr = static_cast<STGM::CBoolSphereSystem *>(R_ExternalPtrAddr(ext));
-    delete sptr;
-    R_ClearExternalPtr(ext);
+    checkPtr(Rextp, sphere_type_tag);
+    STGM::CBoolSphereSystem *sp = (STGM::CBoolSphereSystem *)(R_ExternalPtrAddr(Rextp));
+    _free_spheres(sp);
+    R_ClearExternalPtr(Rextp);
 }
 
 
@@ -47,90 +61,127 @@ SEXP FinalizeSphereSystem(SEXP ext) {
   return R_NilValue;
 }
 
-SEXP InitSphereSystem(SEXP R_param, SEXP R_cond) {
-  int nProtected=0;
+SEXP CreateSpherePointer(STGM::CBoolSphereSystem *sp) {
+  sphere_type_tag = install("SphereSystem_TAG");
+  SEXP Rextp=R_NilValue;
+  PROTECT(Rextp=R_MakeExternalPtr((void*) sp, sphere_type_tag, R_NilValue));
+  R_RegisterCFinalizerEx(Rextp, (R_CFinalizer_t) _sphere_finalizer, TRUE);
 
+  UNPROTECT(1);
+  return Rextp;
+}
+
+STGM::CBoolSphereSystem * InitSphereSystem(SEXP R_param, SEXP R_cond) {
   SEXP R_box;
-  PROTECT( R_box  = getListElement( R_cond, "box"));  ++nProtected;
+  PROTECT( R_box  = getListElement( R_cond, "box"));
   double *boxX = NUMERIC_POINTER( getListElement( R_box, "xrange"));
   double *boxY = NUMERIC_POINTER( getListElement( R_box, "yrange"));
   double *boxZ = NUMERIC_POINTER( getListElement( R_box, "zrange"));
 
   double lam   = asReal(AS_NUMERIC( getListElement( R_param, "lam")));
-  // print level
+
+  /*  print level */
   PL = asInteger(getListElement( R_cond,"pl"));
 
+  /* simulation box */
   STGM::CBox3 box(boxX,boxY,boxZ);
 
   /* set up sphere system */
-  STGM::CBoolSphereSystem *sp = new STGM::CBoolSphereSystem(box,lam);
+  STGM::CBoolSphereSystem *sp = (STGM::CBoolSphereSystem*)Calloc(1,STGM::CBoolSphereSystem);
 
-  SEXP extp;
-  sphere_type_tag = install("SphereSystem_TAG");
-  PROTECT(extp = R_MakeExternalPtr((void*) sp, sphere_type_tag, R_NilValue)); ++nProtected;
-  R_RegisterCFinalizerEx(extp, (R_CFinalizer_t) _sphere_finalizer, TRUE);
+  try {
+      new(sp)STGM::CBoolSphereSystem(box,lam);
+  } catch(...) {
+      error(_("InitSpheroidSystem(): Memory allocation error for sphere system."));
+  }
 
-  UNPROTECT(nProtected);
-  return extp;
+  UNPROTECT(1);
+  return sp;
 }
 
 
 template< typename  F>
 void STGM::CBoolSphereSystem::simSpheres(F f) {
-  double m1 = m_box.m_size[0] +(m_box.m_center[0]-m_box.m_extent[0]),
-         m2 = m_box.m_size[1] +(m_box.m_center[1]-m_box.m_extent[1]),
-         m3 = m_box.m_size[2] +(m_box.m_center[2]-m_box.m_extent[2]);
+  int nTry = 0;
+  while(num==0 && nTry<MAX_ITER) {
+        num = rpois(m_box.volume()*m_lam);
+        ++nTry;
+  }
+  m_spheres.reserve(num);
+
+  double m[3] = {m_box.m_size[0]+m_box.m_low[0],
+                 m_box.m_size[1]+m_box.m_low[1],
+                 m_box.m_size[2]+m_box.m_low[2]};
 
   /* loop over all */
   for (size_t niter=0;niter<num; niter++) {
-      STGM::CVector3d center(runif(0.0,1.0)*m1,runif(0.0,1.0)*m2, runif(0.0,1.0)*m3);
+      STGM::CVector3d center(runif(0.0,1.0)*m[0],runif(0.0,1.0)*m[1],runif(0.0,1.0)*m[2]);
       m_spheres.push_back( STGM::CSphere(center, f(), m_spheres.size()+1));
   }
-
 }
 
-void STGM::CBoolSphereSystem::simSphereSys(R_Calldata d) {
-   int nTry = 0;
+void STGM::CBoolSphereSystem::simSpheresPerfect(double mx, double sdx) {
+  int nTry=0, k=0;
 
+  double p[4],
+         sdx2=SQR(sdx),
+         mu=0,r=0;;
+
+  cum_prob_k(mx,sdx2,m_box.m_up[0],m_box.m_up[1],m_box.m_up[2],p,&mu);
+
+  /* get Poisson parameter */
+  while(num==0 && nTry<MAX_ITER) {
+        num = rpois(mu*m_lam);
+        ++nTry;
+  }
+  m_spheres.reserve(num);
+
+  if(PL>100) {
+     Rprintf("Spheres (perfect) simulation, bivariate lognormal length/shape: \n");
+     Rprintf("\t size distribution: %f %f %f \n",  mx,sdx,mu);
+     Rprintf("\t cum sum of probabilities: %f, %f, %f, %f \n",p[0],p[1],p[2],p[3]);
+  }
+
+  /* loop over all */
+  for (size_t niter=0;niter<num; niter++) {
+      sample_k(p,&k);
+      r=rlnorm(mx+k*sdx2,sdx);
+
+      STGM::CVector3d center(runif(0.0,1.0)*(m_box.m_size[0]+2*r)+(m_box.m_low[0]-r),
+                             runif(0.0,1.0)*(m_box.m_size[1]+2*r)+(m_box.m_low[1]-r),
+                             runif(0.0,1.0)*(m_box.m_size[2]+2*r)+(m_box.m_low[2]-r));
+
+      m_spheres.push_back( STGM::CSphere(center, r, m_spheres.size()+1));
+  }
+}
+
+
+
+void STGM::CBoolSphereSystem::simSphereSys(R_Calldata d)
+{
    GetRNGstate();
-   while(num==0 && nTry<MAX_ITER) {
-      num = rpois(m_box.volume()*m_lam);
-      ++nTry;
-   }
-   m_spheres.reserve(num);
 
    if(isNull(d->call)) {
        /* get arguments */
        double p1=REAL_ARG_LIST(d->args,0),p2=0;
        const char *fname = CHAR(STRING_ELT(d->fname,0));
+
+       /* ACHTUNG: 'const' function braucht 2 Argumente */
        if(strcmp(fname, "const" ))
-         p2=REAL_ARG_LIST(d->args,1); /* ACHTUNG: 'const' function braucht 2 Argumente */
+         p2=REAL_ARG_LIST(d->args,1);
 
-       rdist2_t rdist2=rconst;
-       if ( !strcmp(fname, "rbeta" )) {
-           rdist2=rbeta;
-       } else if(!strcmp(fname, "rlnorm")) {
-           rdist2=rlnorm;
-       } else if(!strcmp(fname, "rgamma")) {
-           rdist2=rgamma;
-       } else if(!strcmp(fname, "runif" )) {
-           rdist2=rweibull;
-       } else if(!strcmp(fname, "const" )) {
-           rdist2=rconst;
+       if(!strcmp(fname, "rlnorm")) {
+           simSpheresPerfect(p1,p2);
        } else {
-           error("Undefined random generating function for radii distribution");
+           R_rndGen_t<rdist2_t> rrandom(p1,p2,fname);
+
+           /* simulate with R's random generating functions */
+           simSpheres<R_rndGen_t<rdist2_t> >(rrandom);
        }
-
-       R_rndGen_t<rdist2_t> rrandom(p1,p2,rdist2);
-
-       /* simulate with R's random generating functions */
-       simSpheres<R_rndGen_t<rdist2_t> >(rrandom);
-
    } else {
-       /* eval R call */
+       /* eval R call for user defined radii distribution */
        R_eval_t<double> reval(d->call, d->rho);
        simSpheres<R_eval_t<double> &>(reval);
-
    }
    PutRNGstate();
 }
@@ -140,12 +191,12 @@ SEXP GetSphereSystem(SEXP ext)
 {
   checkPtr(ext, sphere_type_tag);
 
-  STGM::CBoolSphereSystem *sp = static_cast<STGM::CBoolSphereSystem *>(getExternalPtr(ext));
+  STGM::CBoolSphereSystem *sp = (STGM::CBoolSphereSystem *)(getExternalPtr(ext));
   SEXP R_spheres = R_NilValue;
   STGM::Spheres &spheres = sp->refObjects();
   PROTECT(R_spheres = convert_R_SphereSystem(spheres));
-  setAttrib(R_spheres, install("eptr"), ext);
 
+  setAttrib(R_spheres, install("eptr"), ext);
   SET_CLASS_NAME(R_spheres,"spheres");
 
   UNPROTECT(1);
@@ -159,12 +210,13 @@ SEXP SetupSphereSystem(SEXP R_vname, SEXP R_env, SEXP R_param, SEXP R_cond)
   PROTECT(R_ptr = getAttrib(R_var,install("eptr")));
 
   if(isNull(R_ptr) || isNullPtr(R_ptr,sphere_type_tag)) {
-     R_ptr = InitSphereSystem(R_param,R_cond);
-     if(PL>100)
+     R_ptr = CreateSpherePointer( InitSphereSystem(R_param,R_cond) );
+     if(PL>100) {
        Rprintf("setting pointer to %p \n",R_ExternalPtrAddr(R_ptr));
+     }
   }
 
-  STGM::CBoolSphereSystem *sp = static_cast<STGM::CBoolSphereSystem *>(getExternalPtr(R_ptr));
+  STGM::CBoolSphereSystem *sp = (STGM::CBoolSphereSystem *)(getExternalPtr(R_ptr));
   sp->refObjects() = convert_C_Spheres(R_var);
 
   setAttrib(R_var, install("eptr"), R_ptr);
@@ -172,15 +224,13 @@ SEXP SetupSphereSystem(SEXP R_vname, SEXP R_env, SEXP R_param, SEXP R_cond)
   return R_NilValue;
 }
 
-SEXP SphereSystem(SEXP R_param, SEXP R_cond) {
-  SEXP ext = PROTECT(InitSphereSystem(R_param,R_cond));
-  STGM::CBoolSphereSystem *sp = static_cast<STGM::CBoolSphereSystem *>(getExternalPtr(ext));
-
+SEXP SphereSystem(SEXP R_param, SEXP R_cond)
+{
+  STGM::CBoolSphereSystem *sp = InitSphereSystem(R_param,R_cond);
   R_Calldata cdata = buildRCallSpheres(R_param,R_cond);
 
   if(PL>100) Rprintf("Simulate... \n");
   sp->simSphereSys(cdata);
-  deleteRCall(cdata);
 
   if(PL>100) Rprintf("Simulated %d spheres.\n", sp->getNumSpheres());
 
@@ -192,11 +242,50 @@ SEXP SphereSystem(SEXP R_param, SEXP R_cond) {
   } else {
     PROTECT(R_spheres = allocVector(VECSXP,0));  /* return empty list */
   }
-  setAttrib(R_spheres, install("eptr"), ext);
+
+  SEXP Rextp = R_NilValue;
+  PROTECT(Rextp = CreateSpherePointer(sp));
+
+  setAttrib(R_spheres, install("eptr"), Rextp);
   SET_CLASS_NAME(R_spheres,"spheres");
 
+  deleteRCall(cdata);
   UNPROTECT(2);
   return R_spheres;
+}
+
+
+SEXP SimulateSpheresAndIntersect(SEXP R_param, SEXP R_cond) {
+  STGM::CBoolSphereSystem *sp = InitSphereSystem(R_param,R_cond);
+  R_Calldata cdata = buildRCallSpheres(R_param,R_cond);
+
+  if(PL>100)
+    Rprintf("Simulate and intersect... \n");
+
+  sp->simSphereSys(cdata);
+  deleteRCall(cdata);
+
+  double dz = asReal(getListElement(R_cond,"dz"));
+  STGM::CPlane plane(STGM::CVector3d(0,0,1), dz);
+
+  STGM::IntersectorSpherePlaneVec objects;
+  sp->IntersectWithPlane(objects,plane);
+  //Rprintf("objects: %d , pl: %d, dz: %f \n",objects.size(),PL,dz);
+
+  SEXP R_circles = R_NilValue;
+  if(PL==10) {
+    /* return radii only */
+    PROTECT(R_circles = allocVector(REALSXP,objects.size()));
+    for(size_t k=0;k<objects.size();k++)
+      REAL(R_circles)[k] = objects[k].getCircle().r();
+  } else {
+    /* return full circle object */
+    PROTECT(R_circles = convert_R_Circles(objects));
+  }
+
+  _free_spheres(sp);
+  UNPROTECT(1);
+  return R_circles;
 }
 
 SEXP IntersectSphereSystem(SEXP ext, SEXP R_n, SEXP R_z) {
@@ -218,13 +307,24 @@ SEXP IntersectSphereSystem(SEXP ext, SEXP R_n, SEXP R_z) {
 void STGM::CBoolSphereSystem::IntersectWithPlane(STGM::IntersectorSpherePlaneVec &objects, STGM::CPlane &plane)
 {
   /// Intersect only objects fully inside the observation window
+   int i=0,j=0;
+   int l =plane.idx();
+   switch(l) {
+      case 0: i=1; j=2; break; // YZ
+      case 1: i=0; j=2; break; // XZ
+      case 2: i=0; j=1; break; // XY
+   }
+
+   // assume left-down corner is origin of box
+   CWindow win(m_box.m_size[i],m_box.m_size[j]);
+
    for(size_t i=0; i<m_spheres.size(); ++i) {
         STGM::IntersectorSphere intersector( m_spheres[i], plane, m_box.m_size);
         if(intersector.FindIntersection()) {
-          //if(intersector.getCircle().isInWindow(m_win))
+          if(intersector.getCircle().isInWindow(win))
               objects.push_back( intersector );
         }
-    }
+   }
 }
 
 SEXP convert_R_SphereSystem(STGM::Spheres& spheres) {

@@ -4,25 +4,6 @@
 
 #cot <- function(x) tan(pi/2 - x)
 
-#' A packed spheroids configuration
-#'
-#' A dataset containing 12.606 non-overlapping spheroids
-#'
-#' @format List of spheroids where each list element
-#' 		   consists of the following variables:
-#' \itemize{
-#' 	 \item{id: }{ current spheroid number}
-#' 	 \item{center: }{ x,y,z coordinates of the spheroid center}
-#' 	 \item{u: }{ orientation vector of spheroid's rotational symmetry axis}
-#' 	 \item{ab: }{ axes length}
-#' 	 \item{angles: }{ colatitude and longitude angle}
-#' 	 \item{rotM: }{ rotational matrix, center of rotation is the center of the spheroid}
-#' }
-#' @docType data
-#' @keywords datasets
-#' @name spheroids
-NULL
-
 #' Trivariate stereological unfolding
 #'
 #' Estimate the joint size-shape-orientation distribution of spheroids
@@ -43,7 +24,7 @@ NULL
 #' @example inst/examples/unfold.R
 #'
 #' @references
-#' 	Bene\eqn{\check{\textrm{s}}}, V. and Rataj, J. Stochastic Geometry: Selected Topics Kluwer Academic Publishers, Bosten, 2004
+#' 	Bene\eqn{\check{\textrm{s}}}, V. and Rataj, J. Stochastic Geometry: Selected Topics Kluwer Academic Publishers, Boston, 2004
 em.spheroids <- function(P,F,maxIt,nCores=getOption("par.unfoldr",1)) {	
 	.Call(C_EMS,P,F,list("maxSteps"=maxIt,"nCores"=nCores))
 }
@@ -80,8 +61,6 @@ em.spheroids <- function(P,F,maxIt,nCores=getOption("par.unfoldr",1)) {
 #' @return        object of class \code{unfold}
 #'
 #' @seealso \code{\link{setbreaks}}, \code{\link{binning3d}}
-#' 
-#' @example inst/examples/data.R
 unfold <- function(sp,nclass,maxIt=64,nCores=getOption("par.unfoldr",1),...) UseMethod("unfold", sp)
 unfold.oblate <- function(sp,nclass,maxIt=64,nCores=getOption("par.unfoldr",1),...) { 
 	unfold.prolate(sp,nclass,maxIt,nCores,...)
@@ -183,7 +162,7 @@ binning3d <- function(size,angle,shape,breaks,check=TRUE,na.rm = TRUE) {
 #' \eqn{a_i=i\delta, \delta=maxSize/M } or using exponentially increasing limits: \eqn{base^i, i=1,\dots,M}.
 #' The orientation classes are defined as \eqn{\theta_j=j\omega, \omega=\pi/(2N), j=1,\dots,N} in the range
 #' \eqn{[0,\pi/2]}, where \eqn{M,N} are the number of size classes and the number of orientation classes, respectively.
-#' Argument \code{base} must not be \code{NULL} if \code{sizeType}='exp' is chosen.
+#' Argument \code{base} must not be \code{NULL} if \code{sizeType} equals "exp".
 #'
 #' @param nclass 	number of classes
 #' @param maxSize 	maximum of \code{size} values
@@ -223,7 +202,7 @@ setbreaks <- function(nclass,maxSize,base=NULL,kap=1,sizeType=c("linear","exp"))
 parameters3d <- function(S) {
 	idx <- if(class(S)=="prolate") c(1,2) else c(2,1)
 	list("a"=unlist(lapply(S,function(x) x$ab[1])),
-		 "Theta"=unlist(lapply(S,function(x) getAngle(x$angles[1]))),
+		 "Theta"=unlist(lapply(S,function(x) .getAngle(x$angles[1]))),
 		 "s"=unlist(lapply(S,function(x) x$ab[idx[1]]/x$ab[idx[2]])))
 }
 
@@ -247,11 +226,9 @@ parameterEstimates <- function(H,breaks) {
 							function(i) rep(breaks$shape[i],sum(H[,,i])))))
 }
 
-
-
 #' Trivariate histogram
 #'
-#' Plot trivariate histogram of size, shape, orientation distribution
+#' Plot trivariate histogram of joint size-shape-orientation distribution
 #'
 #' The (estimated spatial) joint size-shape-orientation distribution is plotted
 #' in a box with corresponding axes shown. The axes intersect in the first class number.
@@ -264,9 +241,9 @@ parameterEstimates <- function(H,breaks) {
 #'  @param scale 	factor to scale the spheres
 #'  @param col 		vector of color values repeatedly used
 #'  @param ... 		optional graphic arguments passed to function \code{\link[rgl]{spheres3d}}
-trivarHist <- function(A,main=paste("Trivariate Histogram"),scale=.5,col,...) {
-	#if (!require(rgl)) 
-	#	stop("'rgl' package is required to run 'trivarHist.")
+#' 
+#'  @return 		\code{NULL}
+trivarHist <- function(A, main = paste("Trivariate Histogram"),scale = 0.5,col, ...) {	
 	N <- sum(A)
 	pos <- do.call(rbind,lapply(seq(1:dim(A)[1]),
 					function(i) {
@@ -286,4 +263,3 @@ trivarHist <- function(A,main=paste("Trivariate Histogram"),scale=.5,col,...) {
 	rgl::axes3d(c('x','y','z'), pos=c(1,1,1), tick=FALSE)
 	rgl::title3d(main,'',"orientation","shape","size")
 }
-

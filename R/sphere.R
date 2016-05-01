@@ -32,12 +32,13 @@ getSphereSystem <- function(S) {
 #' reloaded.
 #'
 #' @param S      sphere system
-#' @param box    simulation box
 #' @param pl	 print level
 #' @return		 \code{NULL} 
-setupSphereSystem <- function(S, box, pl=0) {
+setupSphereSystem <- function(S,pl=0) {
 	if(!(class(attr(S,"eptr"))=="externalptr"))
 		warning("'S' has no external pointer attribute, thus we set one.")
+	
+	box <- attr(S,"box")	
 	if(length(box)==0 || !is.list(box))
 		stop("Expected argument 'box' as list type.")
 	if(length(box)==1)
@@ -45,8 +46,8 @@ setupSphereSystem <- function(S, box, pl=0) {
 	else if(length(box)!=3)
 		stop("Simulation box has wrong dimensions.")
 	names(box) <- c("xrange","yrange","zrange")
-	invisible(.Call(C_SetupSphereSystem,as.character(substitute(S)),.GlobalEnv,
-					list("lam"=0),list("box"=box, "pl"=pl)))
+	structure(.Call(C_SetupSphereSystem,as.character(substitute(S)),.GlobalEnv,
+					list("lam"=0),list("box"=box, "pl"=pl)), box = box)
 }
 
 #' Simulation of sphere system
@@ -58,44 +59,53 @@ setupSphereSystem <- function(S, box, pl=0) {
 #'
 #' Any random generating function, passed as a name, for the radii distribution is accepted as long as
 #' the formal function parameter names match the actual parameter names exactly as defined in
-#' the parameter list \code{theta$radii}.
+#' the parameter list \code{theta}.
 #'
 #' The simulation box is of type list. The vector arguments correspond to the lower and upper points in x,y
 #' and z direction. If \code{box} has only one element, i.e. \code{list(c(0,1)}, the same extent is used for the other dimensions.
 #' The argument \code{pl} denotes the print level of information during simulation. Currently, only
 #' \code{pl=0} for no output and \code{pl}>100 is implemented. Argument \code{cond$rdist} is of type string
 #' naming the (user defined) radii random generating function.
-#'
-#' @param theta list of named arguments \code{lam,radii}
+#' Setting \code{size} equal to 'rlnorm' generates log normally distributed radii for a stationary Poisson 
+#' ball system according to a general approach of exact simulation (see reference below). 
+#' 
+#' @param theta simulation parameters
+#' @param lam   mean number of spheres per unit volume
 #' @param rdist string, radii random generating function name
 #' @param box 	simualtion box
 #' @param pl 	print level
 #'
 #' @return list of class \code{spheres} if \code{pl}>100 or empty list
 #'
+#' @references
+#'	\itemize{		
+#'    \item{} {C. Lantu\eqn{\acute{\textrm{e}}}joul. Geostatistical simulation. Models and algorithms. 
+#'             Springer, Berlin, 2002. Zbl 0990.86007}
+#' 	 }
 #' @examples
-#'  theta <- list("lam"=100,"radii"=list("meanlog"=-2.5,"sdlog"=0.2))
-#'  S <- simSphereSystem(theta=theta,rdist="rlnorm",pl=101)
-simSphereSystem <- function(theta,rdist,box=list(c(0,1)), pl=0) {
-	it <- match(names(theta), c("lam","radii"))
-	if(!is.list(theta) || anyNA(it))
+#'  theta <- list("meanlog"=-2.5,"sdlog"=0.2)
+#'  S <- simSphereSystem(theta,lam=1000,rdist="rlnorm",pl=101)
+simSphereSystem <- function(theta,lam,rdist,box=list(c(0,1)), pl=0) {
+	theta <- list("lam"=lam,"radii"=theta)
+	if(!is.numeric(lam) || !(lam>0) ) 
+		stop("Expected 'lam' as non-negative numeric argument")
+	if(!is.list(theta))
 		stop("Expected 'theta' as list of named arguments.")
 	if(!is.list(theta$radii))
 		stop("Expected 'radii' as list of named arguments.")
 
 	if(length(box)==0 || !is.list(box))
-		stop("Expected argument 'box' as list type.")
+		stop("Expected 'box' as list.")
 	if(length(box)==1)
-	  box <- rep(box[1],3)
-  	else if(length(box)!=3)
-	  stop("Simulation box has wrong dimensions.")
-  	names(box) <- c("xrange","yrange","zrange")
-
+		box <- rep(box[1],3)	
+	if(is.null(names(box)) || !(names(box) %in% c("xrange","yrange","zrange")))
+		names(box) <- c("xrange","yrange","zrange")
+	
 	cond <- list("rdist"=rdist,"box"=box, "pl"=pl,
 			      "rho"=.GlobalEnv)
 
 	if(cond$rdist=="const") {
-		.Call(C_SphereSystem, theta, cond)
+		structure(.Call(C_SphereSystem, theta, cond),box = box)
 	} else if(exists(cond$rdist, mode="function")) {
 		fargs <- names(formals(cond$rdist))
 		if(cond$rdist %in% c("rlnorm","rbeta","rgamma","runif"))
@@ -105,7 +115,7 @@ simSphereSystem <- function(theta,rdist,box=list(c(0,1)), pl=0) {
 		if(length(it)==0 || anyNA(it))
 			stop(paste("Arguments of 'radii' must match formal arguments of function ",cond$rdist,sep=""))
 
-		.Call(C_SphereSystem, theta, cond)
+		structure(.Call(C_SphereSystem, theta, cond),box = box)
 	} else
 	  stop(paste("The ", cond$rdist, " function must be defined"))
 

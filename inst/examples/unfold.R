@@ -7,18 +7,18 @@
 lam <- 2500
 
 ## simulation parameters
-theta <- list("lam"=lam,"size"=list("meanlog"=-2.5,"sdlog"=0.5),
+theta <- list("size"=list("meanlog"=-2.5,"sdlog"=0.5),
 		      "shape"=list("alpha"=0.5),"orientation"=list("kappa"=1.5))
 ## simualtion
 set.seed(1234)
-S <- simSpheroidSystem(theta,size="rlnorm",
+S <- simSpheroidSystem(theta,lam,size="rlnorm",
 			orientation="rbetaiso",box=list(c(0,5)),stype="prolate",pl=101)
 ## unfolding
 sp <- verticalSection(S,2.5)
 ret <- unfold(sp,c(15,12,10),kap=1.25)
 cat("Intensities: ", sum(ret$N_V)/25, "vs.",lam,"\n")
 
-## plot joint histogram (optional)
+## uncomment for plot of joint 3d histogram
 # require("rgl")
 # cols <- c("#0000FF","#00FF00","#FF0000","#FF00FF","#FFFF00","#00FFFF")
 # trivarHist(ret$N_V,col=cols,scale=0.9)

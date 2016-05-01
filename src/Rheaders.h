@@ -35,17 +35,4 @@
   UNPROTECT(1);                                        \
 }
 
-
-template<class T>
-inline T SQR(const T a) {return a*a;}
-
-template<class T>
-inline const T &MAX(const T &a, const T &b)
-{return b > a ? (b) : (a);}
-
-template<class T>
-inline const T &MIN(const T &a, const T &b)
-{return b < a ? (b) : (a);}
-
-
 #endif /* RHEADERS_H_ */

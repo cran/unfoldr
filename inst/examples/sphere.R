@@ -1,7 +1,7 @@
 ## beta distributed radii
 lam <-3000
-theta <- list("lam"=lam,"radii"=list("shape1"=2,"shape2"=4))
-S <- simSphereSystem(theta,rdist="rbeta", box=list(c(0,5)),pl=101)
+theta <- list("shape1"=2,"shape2"=4)
+S <- simSphereSystem(theta,lam, rdist="rbeta", box=list(c(0,5)),pl=101)
 
 sp <- planarSection(S,d=2.5)
 ret <- unfold(sp,nclass=20)

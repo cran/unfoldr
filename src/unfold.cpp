@@ -90,6 +90,65 @@ struct  CArray {
 typedef CArray<6> CArray6;
 typedef CArray<3> CArray3;
 
+
+
+
+
+/**
+ * @brief Sample from x={0,1,2,3}
+ *        according to given cumulative probabilities p
+ *        Number of elements to sample from is n=4
+ *
+ * @param p         given cumulative probabilities
+ * @param k [out]   sampled (int) value
+ */
+void sample_k(double *p, int *k) {
+  int j;
+  double rU = unif_rand();
+  for (j=0;j<3;j++) {
+      if (rU <= p[j])
+        break;
+  }
+  *k=j;
+}
+
+/**
+ * @brief Calculate probabilities
+ *
+ * @param mx       mu of logN major semi-axis
+ * @param sdx      sd of logN major semi-axis
+ * @param lx       upper box limit x
+ * @param ly       upper box limit y
+ * @param lz       upper box limit z
+ * @param p        [out] probabilities
+ * @param mu       [out] factor for intensity
+ */
+void cum_prob_k(double mx, double sdx2, double lx, double ly, double lz, double *p, double *mu) {
+  double a[4] = {lx*ly*lz,
+                 2.0*(lx*ly+lx*lz+ly*lz),
+                 M_PI*(lx+ly+lz),
+                 4.0*M_PI/3.0};
+
+  p[0] = a[0];
+  p[1] = a[1]*exp(mx+0.5*sdx2);
+  p[2] = a[2]*exp(2.0*(mx+sdx2));
+  p[3] = a[3]*exp(3.0*mx+4.5*sdx2);
+
+  double mk=0.0;
+  for (int i=0;i<4; i++)
+    mk += p[i];
+
+  p[0] /= mk;
+  p[1] /= mk;
+  p[2] /= mk;
+  p[3] /= mk;
+
+  /* cumulative probabilities */
+  for (int i=1;i<4; i++)
+    p[i] += p[i-1];
+  *mu=mk;
+}
+
 /**
  * @brief Binary search index of element x in vector vec
  *
@@ -354,7 +413,7 @@ struct kernelsp<1> {
 
 template<int KTYPE>
 struct KernFunSP {
-  KernFunSP(double *_b) : b(_b) {};
+  KernFunSP(double *bx) : b(bx) {};
   double operator()(int k, int i) {
       return (kernelsp<KTYPE>::kernelfun(b[i+1], b[k])
              -kernelsp<KTYPE>::kernelfun(b[i+1], b[k+1]));
@@ -647,9 +706,13 @@ static R_CallMethodDef CallEntries[] = {
       CALLDEF(IntersectSphereSystem,3),
       CALLDEF(SphereSystem,2),
       CALLDEF(GetSphereSystem,1),
+      CALLDEF(GetMaxRadius,1),
+      CALLDEF(UpdateIntersections,3),
       CALLDEF(GetEllipsoidSystem,1),
       CALLDEF(SetupSpheroidSystem,4),
       CALLDEF(SetupSphereSystem,4),
+      CALLDEF(SimulateSpheresAndIntersect,2),
+      CALLDEF(SimulateSpheroidsAndIntersect,2),
       CALLDEF(Binning3d,6),
       CALLDEF(Binning1d,2),
       CALLDEF(CoefficientMatrixSpheroids,7),
@@ -665,11 +728,3 @@ void R_init_unfoldr(DllInfo *info) {
 void R_unload_unfold(DllInfo *info){
   /* Release resources. */
 }
-
-
-// #define XTOL_REL 10e-6
-// #define XTOL_ABS 10e-6
-//      /** stopping condition */
-//      test=fabs(mu-mu_old);
-//      if( mu<XTOL_ABS || test<std::max(XTOL_ABS,XTOL_REL*mu_old)  )
-//        break;

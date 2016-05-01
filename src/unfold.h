@@ -1,7 +1,15 @@
+/**
+ * discretization.h
+ *
+ *  Created on: 18.03.2015
+ *      Author: franke
+ */
+
 #ifndef BINNING_H_
 #define BINNING_H_
 
 #include "Rheaders.h"
+#include <R_ext/Rdynload.h>
 
 template<class T>
 inline T cot(const T x) {return tan(M_PI_2 - x);}
@@ -29,6 +37,8 @@ extern "C" {
 }
 #endif
 
+void sample_k(double *p, int *k);
+void cum_prob_k(double mx, double sdx2, double lx, double ly, double lz, double *p, double *mean);
 
 
 #endif /* BINNING_H_ */

@@ -1,4 +1,6 @@
-#include "Rheaders.h"
+#include "R.h"
+#include "Rmath.h"
+#include "Vector.h"
 
 static double D1=3.0/14.0, D2=1.0/6.0, D3=9.0/22.0,
               D4=3.0/26.0, D5=0.25*D3, D6=1.5*D4;
@@ -18,7 +20,7 @@ double RF(double x, double y, double z) {
         if (MIN(MIN(x,y),z) < 0.0 ||
             MIN(MIN(x+y,x+z),y+z) < SMALL_RF ||
             MAX(MAX(x,y),z) > BIG_RF)
-          error(_("RF(): Invalid arguments in function RF."));
+          error("RF(): Invalid arguments in function RF.");
 
         double lam,A,sqrty,sqrtz,dx,dy,dz;
 
@@ -45,7 +47,7 @@ double RD(double x, double y,double z) {
         if (MIN(x,y) < 0.0 ||
             MIN(x+y,z) < SMALL_RD ||
             MAX(MAX(x,y),z) > BIG_RD)
-          error(_("RD(): Invalid arguments in function RF."));
+          error("RD(): Invalid arguments in function RF.");
 
 
         double sum=0.0;

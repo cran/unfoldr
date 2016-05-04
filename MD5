@@ -1,4 +1,4 @@
-946c7bf864ccafbef2e4b0572b29d411 *DESCRIPTION
+73a172668a82f1198ca17a850e6a8fcb *DESCRIPTION
 6772bf5f9db57608c2feec05c13c32e3 *NAMESPACE
 c6fd56208969d493dec82964ac588cc5 *R/sphere.R
 256de42fe4fd71f69e32a845cf1136c9 *R/spheroid.R
@@ -42,7 +42,7 @@ f781ab918935f550f308775e40909889 *src/SimEllipsoid.h
 673718c21cd342e7db39784e53e8fe05 *src/SimSphere.h
 ab122ed9fa0cb9fb795f20304502053f *src/Utils.cpp
 993ea8fea7b2afd86dff4d2a8260b4d6 *src/Utils.h
-51996d99d8b4fcf1ba55412828c2728c *src/Vector.h
+a7e4347d7faae1f35ce13ddb1b4543d2 *src/Vector.h
 5ebc46f7c67527f347d8c91d18b9ee0b *src/directions.cpp
 f03340367b4b1e08558c7c1b045b4e61 *src/directions.h
 f5ac538807dd6aa6e2c98a80a36c2667 *src/ellipt.cpp

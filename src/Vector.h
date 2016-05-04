@@ -8,7 +8,7 @@
 #define VECTOR_H_
 
 #include <R.h>
-
+#include <cstring>
 #include <vector>
 
 template<class T>
@@ -300,8 +300,11 @@ class CMatrix2d {
   double data[2][2];
 
   public:
-  CMatrix2d() {  memset(data, 0, sizeof(data)); }
-   ~CMatrix2d() {}
+  CMatrix2d() {
+    std::memset(data, 0, sizeof(data));
+  }
+
+  ~CMatrix2d() {}
 
   CMatrix2d(const double *a) {
     data[0][0] = a[0];
@@ -342,7 +345,10 @@ class CMatrix3d {
 
   public:
 
-   CMatrix3d() {  memset(data, 0, sizeof(data)); }
+   CMatrix3d() {
+     std::memset(data, 0, sizeof(data));
+   }
+
   ~CMatrix3d() {}
 
   double *operator[](int i) { return data[i]; }

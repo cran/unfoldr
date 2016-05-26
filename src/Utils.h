@@ -19,15 +19,28 @@ SEXP getListElement (SEXP list, const char *str);
 
 /* internally used */
 
+#define GET_CALL(d,i) getCall( VECTOR_ELT(d->fname,i),VECTOR_ELT(d->args,i),d->rho)
+#define GET_NAME(d,i) CHAR(STRING_ELT( VECTOR_ELT(d->fname,i), 0))
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* pointer to some R's random generators */
 typedef double (*rdist2_t)(double, double);
+
 /* a const dummy function */
 inline double rconst(double x, double dummy=0) { return x; }
 
+/* bivariate */
+void rbinorm(double mx, double sdx, double my, double sdy,double rho, double &x, double &y);
+
+/* sample */
+void sample_k(double *p, int *k);
+
+/* cumulative probabilities */
+void cum_prob_k(double mx, double sdx2, double lx, double ly, double lz, double *p, double *mu);
 
 /*
  * R call data struct, fname,args and call could also be
@@ -62,15 +75,6 @@ struct R_eval_t<double> {
     return asReal(eval(call,rho));
   }
 };
-
-//template<typename F >
-//struct R_rndGen_t {
-//  double mx,sdx;
-//  F fn;
-//  R_rndGen_t(double p,double q, F rdist) : mx(p), sdx(q), fn(rdist) {};
-//  inline double operator()() { return fn(mx,sdx); }
-//};
-
 
 struct R_rlnorm_t {
   double mx,sdx;
@@ -109,6 +113,8 @@ struct R_rndGen_t {
 };
 
 
+
+
 /**
  * \brief Show aruments of R function call
  *
@@ -142,5 +148,6 @@ SEXP getCall(SEXP R_fname, SEXP R_args, SEXP R_rho);
  */
 void deleteRCall(R_Calldata call);
 
+R_Calldata getRCallParam(SEXP R_param, SEXP R_cond);
 
 #endif /* UTILS_H_ */

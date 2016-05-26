@@ -241,8 +241,6 @@ parameterEstimates <- function(H,breaks) {
 #'  @param scale 	factor to scale the spheres
 #'  @param col 		vector of color values repeatedly used
 #'  @param ... 		optional graphic arguments passed to function \code{\link[rgl]{spheres3d}}
-#' 
-#'  @return 		\code{NULL}
 trivarHist <- function(A, main = paste("Trivariate Histogram"),scale = 0.5,col, ...) {	
 	N <- sum(A)
 	pos <- do.call(rbind,lapply(seq(1:dim(A)[1]),

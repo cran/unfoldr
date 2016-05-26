@@ -23,14 +23,14 @@ extern "C" {
  SEXP GetEllipsoidSystem(SEXP ext);
  SEXP GetMaxRadius(SEXP ext);
  SEXP SetupSpheroidSystem(SEXP R_vname, SEXP R_env, SEXP R_param, SEXP R_cond);
- SEXP UpdateIntersections(SEXP R_vname, SEXP R_cluster_ids, SEXP R_cond);
+ SEXP UpdateIntersections(SEXP RS, SEXP R_box);
 
 #ifdef __cplusplus
 }
 #endif
 
-
 namespace STGM {
+
 
 /**
  *  Ellipsoid system
@@ -45,19 +45,12 @@ class CEllipsoidSystem
   {
   };
 
-  ~CEllipsoidSystem() {
-    //Rprintf( "Destruct \n");
-  };
+  ~CEllipsoidSystem() {};
 
-  /*
-  void InitSystem(CBox3 &box, double lam, CVector3d &mu, CSpheroid::spheroid_type stype)  {
-    m_stype=stype;  m_box=box;  m_lam=lam;  m_mu=mu;  num=0;
-  }
-  */
 
   void simEllipsoidSys(R_Calldata d);
-  void simEllipsoidSysJoint(R_Calldata d);
-  void simEllipsoidSysBivariat(R_Calldata d);
+  void simSysJoint(R_Calldata d);
+  void simBivariate(R_Calldata d);
 
   STGM::Spheroids &refObjects()  { return m_spheroids; }
   const STGM::Spheroids &refObjects() const { return m_spheroids; }
@@ -68,9 +61,8 @@ class CEllipsoidSystem
   const STGM::CBox3 &box() const { return m_box; }
   STGM::CBox3 &box()  { return m_box; }
 
-  void IntersectWithBox(IntersectorSpheroidPlaneVec &objects);
-  void IntersectWithPlane(IntersectorSpheroidPlaneVec &objects, STGM::CPlane &plane);
-  void simInfo();
+  void IntersectWithBox(IntersectorSpheroids &objects);
+  void IntersectWithPlane(IntersectorSpheroids &objects, STGM::CPlane &plane);
 
  private:
   CBox3 m_box;

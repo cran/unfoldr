@@ -14,7 +14,6 @@
 template<class T>
 inline T cot(const T x) {return tan(M_PI_2 - x);}
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -36,9 +35,6 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
-
-void sample_k(double *p, int *k);
-void cum_prob_k(double mx, double sdx2, double lx, double ly, double lz, double *p, double *mean);
 
 
 #endif /* BINNING_H_ */

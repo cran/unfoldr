@@ -83,6 +83,129 @@ void deleteRCall(R_Calldata call) {
   Free(call);
 }
 
+R_Calldata getRCallParam(SEXP R_param, SEXP R_cond) {
+  int nprotect=0;
+  R_Calldata d = Calloc(1,R_Calldata_s);
+
+  PROTECT(d->fname = getListElement( R_cond, "rdist"));  ++nprotect;
+  PROTECT(d->label = getListElement( R_cond, "label"));  ++nprotect;
+
+  if(TYPEOF(d->fname)!=VECSXP) {
+      PROTECT(d->args  = getListElement( R_param,"rmulti")); ++nprotect;
+      PROTECT(d->rho   = getListElement( R_cond, "rho"  ));  ++nprotect;
+      PROTECT(d->call  = getCall(d->fname,d->args,d->rho));  ++nprotect;
+  } else {
+    PROTECT(d->call = allocVector(VECSXP,3)); ++nprotect;
+
+    /* fname, args are lists of [size, shape, orientation] */
+    PROTECT(d->rho   = getListElement( R_cond, "rho"  )); ++nprotect;
+    PROTECT(d->args = allocVector(VECSXP,3)); ++nprotect;
+    SET_VECTOR_ELT(d->args,0, getListElement( R_param,"size"));
+    SET_VECTOR_ELT(d->args,1, getListElement( R_param,"shape"));
+    SET_VECTOR_ELT(d->args,2, getListElement( R_param,"orientation"));
+
+
+    // size distributions
+    SET_VECTOR_ELT(d->call,0,R_NilValue);
+    const char *ftype_size = GET_NAME(d,0);
+    if ( !strcmp( ftype_size, "rlnorm") ||
+         !strcmp( ftype_size, "rbinorm") ||
+         !strcmp( ftype_size, "rbeta" ) ||
+         !strcmp( ftype_size, "rgamma") ||
+         !strcmp( ftype_size, "runif" ) ||
+         !strcmp( ftype_size, "const" ))
+    {;
+    } else {
+      SET_VECTOR_ELT(d->call,0,GET_CALL(d,0));
+    }
+
+    // shape: here no distributional forms
+    SET_VECTOR_ELT(d->call,1,R_NilValue);
+
+    // orientation distributions
+    SET_VECTOR_ELT(d->call,2,R_NilValue);
+    const char *ftype_dir = GET_NAME(d,2);
+    if ( !strcmp( ftype_dir, "runifdir") ||
+         !strcmp( ftype_dir, "rbetaiso" ) ||
+         !strcmp( ftype_dir, "rvMisesFisher"))
+    {;
+    } else {
+       SET_VECTOR_ELT(d->call,2,GET_CALL(d,2));
+    }
+
+  }
+
+  d->nprotect = nprotect;
+  return d;
+}
+
+/**
+ * @brief Simple bivariate normal random variable
+ */
+void rbinorm(double mx, double sdx, double my, double sdy,double rho, double &x, double &y) {
+  double q1=rnorm(0,1),
+         q2=rnorm(0,1);
+  x=sqrt(1-R_pow(rho,2.0))*sdx*q1 + rho*sdx*q2 + mx;
+  y=sdy*q2 + my;
+}
+
+
+/**
+ * @brief Sample from x={0,1,2,3}
+ *        according to given cumulative probabilities p
+ *        Number of elements to sample from is n=4
+ *
+ * @param p         given cumulative probabilities
+ * @param k [out]   sampled (int) value
+ */
+void sample_k(double *p, int *k) {
+  int j;
+  double rU = unif_rand();
+  for (j=0;j<3;j++) {
+      if (rU <= p[j])
+        break;
+  }
+  *k=j;
+}
+
+/**
+ * @brief Calculate probabilities
+ *
+ * @param mx       mu of logN major semi-axis
+ * @param sdx      sd of logN major semi-axis
+ * @param lx       upper box limit x
+ * @param ly       upper box limit y
+ * @param lz       upper box limit z
+ * @param p        [out] probabilities
+ * @param mu       [out] factor for intensity
+ */
+void cum_prob_k(double mx, double sdx2, double lx, double ly, double lz, double *p, double *mu) {
+  double a[4] = {lx*ly*lz,
+                 2.0*(lx*ly+lx*lz+ly*lz),
+                 M_PI*(lx+ly+lz),
+                 4.0*M_PI/3.0};
+
+  p[0] = a[0];
+  p[1] = a[1]*exp(mx+0.5*sdx2);
+  p[2] = a[2]*exp(2.0*(mx+sdx2));
+  p[3] = a[3]*exp(3.0*mx+4.5*sdx2);
+
+  double mk=0.0;
+  for (int i=0;i<4; i++)
+    mk += p[i];
+
+  p[0] /= mk;
+  p[1] /= mk;
+  p[2] /= mk;
+  p[3] /= mk;
+
+  /* cumulative probabilities */
+  for (int i=1;i<4; i++)
+    p[i] += p[i-1];
+  *mu=mk;
+}
+
+
 /* get the elements of a list */
 SEXP getListElement (SEXP list, const char *str)
 {

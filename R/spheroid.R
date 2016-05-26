@@ -40,15 +40,14 @@ getMaxRadius <- function(S) {
 #' 
 #' Determine intersections of spheroids with bounding (simulation) box
 #' 
-#' For a given set of spheroid id numbers calculate if these spheroids intersect 
+#' For a given list of spheroids, spheres or cylinders calculate if these objects intersect 
 #' the simulation box or not.
 #' 
-#' @param S 	spheroid system
-#' @param id    integer vector of spheroid id numbers
-#' @param cond  conditioning object
+#' @param S 	geometric objects system
+#' @param box   the simulation box
 #' @return 		integer vector indicating intersection=\code{1} or non intersection by \code{0}
-updateIntersections <- function(S,id,cond) {
-  .Call(C_UpdateIntersections,S,id,cond)	
+updateIntersections <- function(S,box) {
+  .Call(C_UpdateIntersections,S,box)	
 }
 
 #' Constuctor section profiles
@@ -98,7 +97,7 @@ sectionProfiles <- function(size,angle,type=c("prolate","oblate")) {
 #' @param pl	 print level
 #' @param mu	 main orientation vector
 #' @return		 \code{NULL} 
-setupSpheroidSystem <- function(S,mu=c(0,0,1),pl=0) {
+setupSpheroidSystem <- function(S,mu=c(0,1,0),pl=0) {
 	if(!(class(attr(S,"eptr"))=="externalptr"))
 		warning(paste(substitute(S)," has no external pointer attribute, thus we set one.",sep=""))
 	stype <- attr(S,"class")
@@ -174,7 +173,7 @@ getSpheroidSystem <- function(S) {
 #' @param stype spheroid type
 #' @param rjoint name of joint random generating function
 #' @param box simulation box
-#' @param mu  main orientation axis
+#' @param mu  main orientation axis, \code{mu=c(0,1,0)} (default)
 #' @param pl  optional: print level
 #' @param label optional: set a label to all generated spheroids
 #' @return list of spheroids either of class \code{prolate} or \code{oblate}
@@ -188,7 +187,8 @@ getSpheroidSystem <- function(S) {
 #' 					Springer, Berlin, 2002. Zbl 0990.86007}
 #' 	  }
 simSpheroidSystem <- function(theta, lam, size, shape="const",orientation="rbetaiso",
-								stype=c("prolate","oblate"),rjoint=NULL,box=list(c(0,1)),mu=c(0,0,1), pl=0, label="N")
+								stype=c("prolate","oblate"),rjoint=NULL,box=list(c(0,1)),
+								mu=c(0,1,0), pl=0, label="N")
 {
 	it <- pmatch(stype,c("prolate","oblate"))
 	if(length(it)==0 || is.na(it)) stop("Spheroid type 'stype' is either 'prolate' or 'oblate'.")
@@ -357,4 +357,82 @@ verticalSection <- function(S,d,n=c(1,0,0)) {
 		stop("Spheroids type does not match.")
 	ss <- .Call(C_IntersectSpheroidSystem,attr(S,"eptr"),n, d)
 	.section2d(ss)
+}
+
+
+#' Plot particle system
+#' 
+#' Draw particle system as defined by \code{S}.
+#' 
+#' @param S				a list of spheroids
+#' @param box			simulation box
+#' @param draw.axes		logical: if true, draw the axes
+#' @param draw.box	    logical: if true, draw the bounding box
+#' @param clipping 		logical: if true clip to the bounding box
+#' @param ...			further material properties passed to 3d plotting functions  
+spheroids3d <- function(S, box, draw.axes=FALSE, draw.box=TRUE, clipping=FALSE, ...)
+{
+	#if(!require(rgl))
+	#  stop("Please install 'rgl' package from CRAN repositories before running this function.")	
+	ellipsoid3d <- function(rx=1,ry=1,rz=1,n=50,ctr=c(0,0,0), qmesh=FALSE,trans = par3d("userMatrix"),...) {
+		if (missing(trans) && !rgl.cur())
+			trans <- diag(4)
+		degvec <- seq(0,2*pi,length=n)
+		ecoord2 <- function(p) {
+			c(rx*cos(p[1])*sin(p[2]),ry*sin(p[1])*sin(p[2]),rz*cos(p[2]))
+		}
+		v <- apply(expand.grid(degvec,degvec),1,ecoord2)
+		if (qmesh) 
+			v <- rbind(v,rep(1,ncol(v))) ## homogeneous
+		e <- expand.grid(1:(n-1),1:n)
+		i1 <- apply(e,1,function(z)z[1]+n*(z[2]-1))
+		i2 <- i1+1
+		i3 <- (i1+n-1) %% n^2 + 1
+		i4 <- (i2+n-1) %% n^2 + 1
+		i <- rbind(i1,i2,i4,i3)
+		if (!qmesh)
+			rgl::quads3d(v[1,i],v[2,i],v[3,i],...)
+		else
+			return(rgl::rotate3d(rgl::qmesh3d(v,i,material=...),matrix=trans))
+	}
+	sphere <- ellipsoid3d(qmesh=TRUE,trans=diag(4))
+	
+	spheroid3d <- function (x=0,y=0,z=0, a=1, b=1,c=1, rotM, subdivide = 3, smooth = TRUE){
+		result <- rgl::scale3d(sphere, a,b,c)
+		result <- rgl::rotate3d(result,matrix=rotM)
+		result <- rgl::translate3d(result, x,y,z)
+		invisible(result)
+	}
+	N <- length(S)
+	ll <- lapply(S, function(x)
+				spheroid3d(x$center[1],x$center[2],x$center[3],
+						x$ab[1],x$ab[1],x$ab[2],rotM=x$rotM))
+	
+	rgl::shapelist3d(ll,...)
+	
+	## draw box
+	x <- box$xrange[2]
+	y <- box$yrange[2]
+	z <- box$zrange[2]
+	c3d.origin <- rgl::translate3d(rgl::scale3d(rgl::cube3d(col="darkgray", alpha=0.1),x/2,y/2,z/2),x/2,y/2,z/2)
+	shade3d(c3d.origin)
+	
+	if(clipping) {
+		rgl::clipplanes3d(-1,0,0,x)
+		rgl::clipplanes3d(0,-1,0,y)
+		rgl::clipplanes3d(0,0,-1,z)
+		rgl::clipplanes3d(1,0,0,0)
+		rgl::clipplanes3d(0,1,0,0)
+		rgl::clipplanes3d(0,0,1,0)
+		
+	}
+	
+	if(draw.axes) {
+		rgl::axes3d(c('x','y','z'), pos=c(0,0,0))
+		rgl::title3d('','','x','y','z')
+	}
+	if(draw.box) {
+		rgl::axes3d(edges = "bbox",labels=TRUE,tick=FALSE,box=TRUE,nticks=0,
+				expand=1.0,xlen=0,xunit=0,ylen=0,yunit=0,zlen=0,zunit=0)
+	}
 }

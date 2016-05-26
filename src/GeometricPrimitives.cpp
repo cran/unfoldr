@@ -13,13 +13,205 @@ do {                                               \
     (R)[_i] = (P1)[_i]-(P2)[_i];                   \
 } while(0)
 
+#define Vec3Op(A,assign_op,B,op,C)                 \
+(   A[0] assign_op B[0] op C[0],                   \
+    A[1] assign_op B[1] op C[1]                    \
+)
+
+#define VecDot(A,B)  ((A[0]*B[0]) + (A[1]*B[1]) + (A[2]*B[2]))
+#define VecNorm(V)    sqrt(VecDot(V,V))
+
+#define VecScalar(V,assign_op,k)                   \
+(   V[0] assign_op k,                              \
+    V[1] assign_op k,                              \
+    V[2] assign_op k                               \
+)
+
+#define MATMULT_MV(V,M,U)                                               \
+do {                                                                    \
+    int _i, _j;                                                         \
+    for (_i = 0; _i < NDIM; _i++) {                                     \
+        (V)[_i] = 0.0;                                                  \
+        for (_j = 0; _j < NDIM; _j++)                                   \
+            (V)[_i] += (M)[_i][_j] * (U)[_j];                           \
+    }                                                                   \
+} while(0)
+
+#define COPY_R_MATRIX(M,R)                         \
+do {                                               \
+    int _i, _j;                                    \
+    for (_i = 0; _i < NDIM; _i++)                  \
+      for (_j = 0; _j < NDIM; _j++)                \
+        (M)[_i][_j] = (R)[_j+NDIM*_i];             \
+} while(0)
+
+#define sgn(x) ((x) > 0 ? 1 : -1)
 
 #include <R_ext/Lapack.h>
 #include "GeometricPrimitives.h"
 
 static inline double sign(double a,double b) { return a = fabs(a),(b<0)?-a:a; }
 
+/** minimum distance cylinder rods */
+void sdm(const double *r12,  const double *u1, const double *u2, const  double *lh1p, const double *lh2p, double *d) {
+  double  xmu=0, xla=0,
+          lh1=*lh1p, lh2=*lh2p,
+          rr = r12[0]*r12[0]+r12[1]*r12[1]+r12[2]*r12[2],
+          ru1 = r12[0]*u1[0]+r12[1]*u1[1]+r12[2]*u1[2],
+          ru2 = r12[0]*u2[0]+r12[1]*u2[1]+r12[2]*u2[2],
+          u1u2 = u1[0]*u2[0]+u1[1]*u2[1]+u1[2]*u2[2],
+          cc = 1.0-SQR(u1u2);
+
+  // Checking whether the rods are or not parallel:
+  // The original code is modified to have symmetry:
+
+   if(cc<ZERO_TOL) {
+    if(ru1!=0 && ru2!=0) {
+        xla= ru1/2;
+        xmu= -ru2/2;
+    } else {
+        xla=0;
+        xmu=0;
+    }
+   } else {
+    // Step 1
+    xla= (ru1-u1u2*ru2)/cc;
+    xmu= (-ru2+u1u2*ru1)/cc;
+   }
+
+  // Step 2
+  if( fabs(xla)>lh1 || fabs(xmu)>lh2 ) {
+  // Step 3 - 7
+    if(fabs(xla)-lh1>fabs(xmu)-lh2) {
+     xla= sign(lh1,xla);
+     xmu= xla*u1u2-ru2;
+     if( fabs(xmu)>lh2 ) xmu= sign(lh2,xmu);
+    }
+    else {
+     xmu= sign(lh2,xmu);
+     xla= xmu*u1u2+ru1;
+     if( fabs(xla)>lh1 ) xla= sign(lh1,xla);
+    }
+   }
+   // Step 8
+   *d=rr+SQR(xla)+SQR(xmu)-2*xla*xmu*u1u2 + 2*xmu*ru2 - 2*xla*ru1;
+}
+
+
+double solveQ(double p, double q) {
+  double r=0, D=SQR(0.5*p)-q;
+  if(D>0) {
+     r = -0.5*p-sgn(p)*sqrt(D);
+     return ( r<q/r ? q/r: r);
+  }
+  return -1;
+}
+
+double contactRadius(double *t, double *rr, double li, double lj, double ri, double rj) {
+  double z[3] = {0.0,0.0,1.0}, a = ri+rj,
+          tmp = 0, x = 0, b = 0, ti = 0, tj = 0,
+         rmax = 0;                                                       /* final contact radius*/
+
+  double r = VecNorm(rr);
+  VecScalar(rr,/=,r);
+
+  double zt = VecDot(z,t),
+         rz = VecDot(rr,z),
+         rt = VecDot(rr,t);
+
+  if(zt<1) {
+      double Ai = (rz-rt*zt)/(1-SQR(zt));
+      double Aj = (rz*zt-rt)/(1-SQR(zt));
+      tmp = a/sqrt(1+SQR(Ai)+SQR(Aj)+2*(Aj*rt-Ai*rz)-2*Ai*Aj*zt);
+      ti = tmp*Ai;
+      tj = tmp*Aj;
+
+      if( (ti>-li && ti<li) && (tj>-lj && tj < lj) )
+        rmax = tmp;
+  }
+
+  if(rz<1) {
+      x = 2*lj*(rt-rz*zt)/(1-SQR(rz));
+      b = (SQR(lj)*SQR(zt)+SQR(lj)-2*SQR(lj)*SQR(zt)-SQR(a))/(1-SQR(rz));
+      tmp = solveQ(x,b);
+      if(tmp>0) {
+          ti = tmp*rz+lj*zt;
+          if( ti>-li && ti<li && tmp>rmax)
+            rmax = tmp;
+      }
+
+      ///x = 2*lj*(rz*zt-rt)/(1-SQR(rz));
+      tmp = solveQ(-x,b);
+      if(tmp>0) {
+          ti = tmp*rz-lj*zt;
+          if( ti>-li && ti<li && tmp>rmax)
+            rmax = tmp;
+      }
+
+  }
+
+  if(rt<1) {
+      x = 2*li*(rt*zt-rz)/(1-SQR(rt));
+      b = (SQR(li)*SQR(zt)+SQR(li)-2*SQR(li)*SQR(zt)-SQR(a))/(1-SQR(rt));
+      tmp = solveQ(x,b);
+      if(tmp>0) {
+          tj = li*zt-tmp*rt;
+          if( tj>-lj && tj<lj && tmp>rmax)
+            rmax = tmp;
+      }
+
+      ///x = 2*li*(rz-rt*zt)/(1-SQR(rt));
+      tmp = solveQ(-x,b);
+      if(tmp>0) {
+         tj = -li*zt-tmp*rt;
+         if( tj>-lj && tj<lj && tmp>rmax)
+           rmax = tmp;
+      }
+
+  }
+
+  /* do not change order! */
+  x = 2*(lj*rt-li*rz);
+  b = SQR(li)+SQR(lj)-2*li*lj*zt-SQR(a);
+  tmp = solveQ(x,b);
+  if(tmp>0 && tmp>rmax)
+    rmax = tmp;
+
+  ///x = 2*(-lj*rt+li*rz);
+  tmp = solveQ(-x,b);
+  if(tmp>0 && tmp>rmax)
+    rmax = tmp;
+
+  x = 2*(-lj*rt-li*rz);
+  b = SQR(li)+SQR(lj)+2*li*lj*zt-SQR(a);
+  tmp = solveQ(x,b);
+  if(tmp>0 && tmp>rmax)
+    rmax = tmp;
+
+  ///x = 2*(lj*rt+li*rz);
+  tmp = solveQ(-x,b);
+  if(tmp>0 && tmp>rmax)
+    rmax = tmp;
+
+  return rmax;
+}
+
+/** cylinder contact radius */
+void ContactRadius(double *u, double *li, double *lj, double *ri, double *rj,double *R, double *d, double *rmax)
+{
+  double m[NDIM][NDIM];
+  COPY_R_MATRIX(m,R);
+
+  double rr[3],t[3];
+  MATMULT_MV(t,m,u);
+  MATMULT_MV(rr,m,d);
+
+  *rmax=contactRadius(t,rr, *li, *lj, *ri, *rj);
+}
+
+
 namespace STGM {
+
   typedef const double *array_t;
   typedef const double (*matrix_t)[3];
 
@@ -99,80 +291,32 @@ namespace STGM {
     return r;
   }
 
-  double shortestDistance(const double *r12,  const double *u1, const double *u2, const double &lh1,
-                            const double &lh2, double &xla, double &xmu)
-  {
-    double  rr =  r12[0]*r12[0]+r12[1]*r12[1]+r12[2]*r12[2],
-            ru1 = r12[0]*u1[0]+r12[1]*u1[1]+r12[2]*u1[2],
-            ru2 = r12[0]*u2[0]+r12[1]*u2[1]+r12[2]*u2[2],
-            u1u2 = u1[0]*u2[0]+u1[1]*u2[1]+u1[2]*u2[2],
-            cc = 1.0-SQR(u1u2);
+  double CSpheroid::spheroidDistanceAsCylinder(CSpheroid &sp, double &alpha) const {
+      STGM::CVector3d w(0,0,0), z(0,0,1);
+      double d=0, lh1=1.0e-7,lh2=1.0e-7;
 
-    // Checking whether the rods are or not parallel:
-    // The original code is modified to have symmetry:
-
-     if(cc<ZERO_TOL) {
-      if(ru1!=0 && ru2!=0) {
-          xla= ru1/2;
-          xmu= -ru2/2;
-      } else {
-          xla=0;
-          xmu=0;
-          return rr;
-      }
-     } else {
-      // Step 1
-      xla= (ru1-u1u2*ru2)/cc;
-      xmu= (-ru2+u1u2*ru1)/cc;
-     }
-
-    // Step 2
-    if( fabs(xla)>lh1 || fabs(xmu)>lh2 ) {
-    // Step 3 - 7
-      if(fabs(xla)-lh1>fabs(xmu)-lh2) {
-       xla= sign(lh1,xla);
-       xmu= xla*u1u2-ru2;
-       if( fabs(xmu)>lh2 ) xmu= sign(lh2,xmu);
-      }
-      else {
-       xmu= sign(lh2,xmu);
-       xla= xmu*u1u2+ru1;
-       if( fabs(xla)>lh1 ) xla= sign(lh1,xla);
-      }
-     }
-     // Step 8
-      return rr+SQR(xla)+SQR(xmu) - 2*xla*xmu*u1u2 + 2*xmu*ru2 - 2*xla*ru1;
-  }
-
-
-  double CSpheroid::spheroidDistanceAsCylinder(CSpheroid &sp) const {
-      double d=0, xla=0,xmu=0;
-      double lh1=1.0e-7,lh2=1.0e-7;
-
-      STGM::CPoint3d w(0,0,0);
-
-      //sp.setCrackType(crack);
-      DISTANCE_VEC(m_center.ptr(),sp.Center().ptr(),w.ptr());
+      DISTANCE_VEC(m_center.ptr(),sp.center().ptr(),w.ptr());
+      alpha = asin(w.dot(z)/w.Length());
 
       if(m_crack && sp.m_crack)  {  // E_i, E_j
          lh1 = m_b-m_a;
          lh2 = sp.b()-sp.a();
-         d=shortestDistance(w.ptr(),m_u.ptr(),sp.u().ptr(),lh1,lh2,xla,xmu);
+         sdm(w.ptr(),m_u.ptr(),sp.u().ptr(),&lh1,&lh2,&d);
          return MAX(sqrt(d) - m_a - sp.a(),0.0);
 
       } else if(!m_crack && sp.m_crack)  {  // D_i, E_j
          lh2 = sp.b()-sp.a();
-         d=shortestDistance(w.ptr(),m_u.ptr(),sp.u().ptr(),lh1,lh2,xla,xmu);
+         sdm(w.ptr(),m_u.ptr(),sp.u().ptr(),&lh1,&lh2,&d);
          return MAX(sqrt(d) - sp.a(),0.0);
 
       } else if(m_crack && !sp.m_crack)  {  // E_i, D_j
           lh1 = m_b-m_a;
-          d=shortestDistance(w.ptr(),m_u.ptr(),sp.u().ptr(),lh1,lh2,xla,xmu);
+          sdm(w.ptr(),m_u.ptr(),sp.u().ptr(),&lh1,&lh2,&d);
           return MAX(sqrt(d) - m_a,0.0);
 
       } else  {//if(!m_crack && !sp.m_crack)  // D_i, D_j
-          d=sqrt(shortestDistance(w.ptr(),m_u.ptr(),sp.u().ptr(),lh1,lh2,xla,xmu));
-          return MAX(d,0.0);
+          sdm(w.ptr(),m_u.ptr(),sp.u().ptr(),&lh1,&lh2,&d);
+          return MAX(sqrt(d),0.0);
       }
 
     }
@@ -205,19 +349,88 @@ namespace STGM {
      return p;
    }
 
-   /*
-   bool CCircle3::isInWindow(STGM::CWindow &win) {
-    std::vector<CPoint2d> p = getMinMaxPoints();
-    if( (win.PointInWindow( CVector2d(p[0][0],p[1][0]) ) == 0) &&
-       (win.PointInWindow( CVector2d(p[0][0],p[1][1]) ) == 0) &&
-       (win.PointInWindow( CVector2d(p[0][1],p[1][0]) ) == 0) &&
-       (win.PointInWindow( CVector2d(p[0][1],p[1][1]) ) == 0))
-    {
-     return true;
-    }
-   return false;
-  }
-  */
+
+   double CCylinder::cylinderDistance(CCylinder &sp, double &alpha) const {
+       STGM::CVector3d w(0,0,0), z(0,0,1);
+       DISTANCE_VEC(m_center.ptr(),sp.center().ptr(),w.ptr());
+
+       double d = 0, lh1 = .5*m_h, lh2 = .5*sp.m_h;
+       sdm(w.ptr(),m_u.ptr(),sp.u().ptr(),&lh1,&lh2,&d);
+
+       alpha = asin( w.dot(z)/w.Length() );
+       return MAX(sqrt(d)-m_r-sp.m_r,.0);
+   }
+
+   CEllipse2 CCylinder::crackProjection() const {
+       STGM::CPoint2d ctr(m_center[0],m_center[1]);
+       STGM::CVector3d z(cos(m_phi)*m_u[2], sin(m_phi)*m_u[2], sin(-m_phi)*m_u[1]-cos(-m_phi)*m_u[0]);
+       STGM::CVector3d pz(z),  pv(cross(m_u,z));    // minor, major
+
+       pz.Normalize();
+       pv.Normalize();
+
+       pz *= m_r;
+       pz += m_center;
+       pv *= m_r;
+       pv += m_center;
+
+       STGM::CPoint2d axis1(pz[0]-ctr[0],pz[1]-ctr[1]);
+       STGM::CPoint2d axis2(pv[0]-ctr[0],pv[1]-ctr[1]);
+
+       double zlen = axis1.Length();
+       double vlen = axis2.Length();
+
+       axis1.Normalize();
+       axis2.Normalize();
+
+       return STGM::CEllipse2(ctr,axis2,axis1,zlen,vlen,m_id);
+   }
+
+
+   double CCylinder::delamProjection(PointVector2d &P, int npoints) {
+      int np = floor(MAX(8,npoints-4)/2);
+      CVector3d n(0,0,1), u(cross(m_u,n));
+
+      /// projected rectangle points
+      u.Normalize();
+      P.push_back(CPoint2d(m_center[0]+m_r*u[0]+0.5*m_h*m_u[0],m_center[1]+m_r*u[1]+0.5*m_h*m_u[1]));
+      P.push_back(CPoint2d(m_center[0]-m_r*u[0]+0.5*m_h*m_u[0],m_center[1]-m_r*u[1]+0.5*m_h*m_u[1]));
+      P.push_back(CPoint2d(m_center[0]+m_r*u[0]-0.5*m_h*m_u[0],m_center[1]+m_r*u[1]-0.5*m_h*m_u[1]));
+      P.push_back(CPoint2d(m_center[0]-m_r*u[0]-0.5*m_h*m_u[0],m_center[1]-m_r*u[1]-0.5*m_h*m_u[1]));
+
+      /// rectangle sides
+      CPoint2d A,B;
+      Vec3Op(A,=,P[0],-,P[2]);
+      Vec3Op(B,=,P[0],-,P[1]);
+
+      CCircle3 c1(m_origin0,m_r);
+      c1.samplePoints(P,np);
+      CCircle3 c2(m_origin1,m_r);
+      c2.samplePoints(P,np);
+
+      /// projection area: 2*area of the half circles times
+      /// the area of the rectangle in between the closing caps
+      return c1.area() + A.Length()*B.Length();
+   }
+
+   double CCylinder::projectedPointsWithArea(PointVector2d &P, int npoints) {
+     /// delam, full projection
+     if(m_crack) {
+       /// for spheres as spherocylinders
+       if(!strcmp(m_label,"F")) {
+           CCircle3 circle(m_center,m_r);
+           circle.samplePoints(P,npoints);
+           return M_PI*SQR(m_r);
+       }
+       /// only for full spherocylinders
+       return delamProjection(P,npoints);
+     /// crack, circle projection (same as for spheroids)
+     } else {
+       CEllipse2 e = crackProjection();
+       e.samplePoints(P,npoints);
+       return e.area();
+     }
+   }
 
 
   void CBox3::setExtent(double a, double b, double c) {
@@ -250,15 +463,15 @@ namespace STGM {
       m_lateral_planes.push_back(CPlane(STGM::CVector3d(0,-1,0),m_size[1])); // behind
   }
 
-  STGM::CEllipse2 CSpheroid::spheroidCrackProjection() const {
+  STGM::CEllipse2 CSpheroid::spheroidProjection() const {
     if(m_crack)
-      return spheroidProjection();
+      return delamProjection();
     else
-      return spheroidCircleProjection();
+      return crackProjection();
   }
 
 
-  STGM::CEllipse2 CSpheroid::spheroidProjection() const
+  STGM::CEllipse2 CSpheroid::delamProjection() const
   {
     array_t  m = m_center.ptr();
 
@@ -272,14 +485,35 @@ namespace STGM {
     return STGM::CEllipse2(A_new, center, m_id, 0.5*M_PI);
   }
 
-  STGM::CEllipse2 CSpheroid::spheroidCircleProjection() const
+  STGM::CEllipse2 crackProjection(STGM::CVector3d &center, STGM::CVector3d &u, double a, double phi, int id) {
+    STGM::CPoint2d ctr(center[0],center[1]);
+    STGM::CVector3d z(cos(phi)*u[2], sin(phi)*u[2], sin(-phi)*u[1]-cos(-phi)*u[0]);
+
+    STGM::CVector3d pz(z), pv(cross(u,z));  // minor and major
+    pz.Normalize();
+    pv.Normalize();
+    pz *= a;
+    pz += center;
+    pv *= a;
+    pv += center;
+
+    STGM::CPoint2d axis1(pz[0]-ctr[0],pz[1]-ctr[1]);
+    STGM::CPoint2d axis2(pv[0]-ctr[0],pv[1]-ctr[1]);
+
+    double zlen = axis1.Length();
+    double vlen = axis2.Length();
+    axis1.Normalize();
+    axis2.Normalize();
+
+    return STGM::CEllipse2(ctr,axis2,axis1,zlen,vlen,id);
+  }
+
+  STGM::CEllipse2 CSpheroid::crackProjection() const
   {
         STGM::CPoint2d ctr(m_center[0],m_center[1]);
-        STGM::CVector3d n(0,0,1), u(m_u);
-
-        STGM::CVector3d z(cos(m_phi)*u[2],
-                          sin(m_phi)*u[2],
-                          sin(-m_phi)*u[1]-cos(-m_phi)*u[0]);
+        STGM::CVector3d z(cos(m_phi)*m_u[2],
+                          sin(m_phi)*m_u[2],
+                          sin(-m_phi)*m_u[1]-cos(-m_phi)*m_u[0]);
 
         STGM::CVector3d pz(z),               // minor
                         pv(cross(m_u,z));    // major
@@ -303,5 +537,151 @@ namespace STGM {
 
         return STGM::CEllipse2(ctr,axis2,axis1,zlen,vlen,m_id);
   }
+
+  bool CEllipse3::isInside(double x, double y) {
+       if(m_type == 7) {
+          return isInsideEllipse(x,y);
+       } else if(m_type == 8) {
+            int side1 = whichSide(STGM::CPoint2d(x,y),0);
+            if( side1 == m_side0 || side1 == 0)
+              return isInsideEllipse(x,y);
+            else
+              return m_circle1.isInside(x,y);
+       } else if(m_type==9) {
+           int side1 = whichSide(STGM::CPoint2d(x,y),0);
+           int side2 = whichSide(STGM::CPoint2d(x,y),1);
+           if( (side1 == m_side0 || side1 == 0) && (-side2 == m_side0 || side2 == 0) ) {
+             return isInsideEllipse(x,y);
+           } else {
+             return ( m_circle1.isInside(x,y) || m_circle2.isInside(x,y));
+           }
+
+       }
+       return false;
+  }
+
+
+  bool CEllipse3::isInWindow(STGM::CWindow &win) {
+      std::vector<STGM::CPoint2d> p = getMinMaxPoints();
+
+      if( (win.PointInWindow( STGM::CVector2d(p[0][0],p[1][0]) ) == 0) &&
+          (win.PointInWindow( STGM::CVector2d(p[0][0],p[1][1]) ) == 0) &&
+          (win.PointInWindow( STGM::CVector2d(p[0][1],p[1][0]) ) == 0) &&
+          (win.PointInWindow( STGM::CVector2d(p[0][1],p[1][1]) ) == 0))
+      {
+        return true;
+      }
+      return false;
+    }
+
+    PointVector CEllipse3::getEllipseExtremePoints()
+    {
+         //Rprintf("getEllipseExtremePoints...\n");
+         std::vector<STGM::CPoint2d> p;
+         p.push_back(getMaxEllipsePoint_X());
+         p.push_back(getMinEllipsePoint_X());
+         p.push_back(getMaxEllipsePoint_Y());
+         p.push_back(getMinEllipsePoint_Y());
+
+  #if DEBUG
+         for(int i=0; i<p.size();i++)
+           Rprintf("[ %f %f ], \n",p[i][0], p[i][1]);
+         Rprintf("\n");
+
+  #endif
+         return p;
+     }
+
+
+    /** @brief Minimum and maximum coordinates
+     *
+     * @return
+     */
+     std::vector<STGM::CPoint2d> CEllipse3::getMinMaxPoints()
+     {
+         //Rprintf("getMinMaxPoints... \n");
+         std::vector<STGM::CPoint2d> p;
+         p.reserve(2);
+
+         /** ELLIPSE */
+         if(m_type == 7) {
+             p.push_back(getMinMax_X());
+             p.push_back(getMinMax_Y());
+
+  #if DEBUG
+             Rprintf("return p...\n");
+             for(int i=0; i<p.size();i++)
+                Rprintf("[ %f %f ], \n",p[i][0], p[i][1]);
+             Rprintf("\n");
+  #endif
+             return p;
+
+         /** ELLIPSE_ARC and ELLIPSE_SEG*/
+         } else if(m_type==8 || m_type==9) {
+             int side1=-2, side2=-2;
+             /** Ellipse points*/
+             std::vector<STGM::CPoint2d> py; /** at end y sorted coordinates */
+             std::vector<STGM::CPoint2d> pp = getEllipseExtremePoints();
+
+             for(PointIterator it = pp.begin(); it != pp.end(); ++it) {
+                 side1 = whichSide(*it,0);
+                 if(m_type==8) {
+                     /** point must not lie in the circle cap*/
+                     if( side1 == m_side0 || side1 == 0)
+                       py.push_back(*it);
+                 } else if(m_type==9) {
+                     side2 = whichSide(*it,1);
+                     /** point must not lie in both circle caps */
+                     if( (side1 == m_side0 || side1 == 0) && ( -side2 == m_side0 || side2 == 0) )
+                         py.push_back(*it);
+                 }
+                 //Rprintf("side0 %d == side1 %d, side2 %d\n", m_side0,side1,side2);
+             }
+
+  #if DEBUG
+             Rprintf("\n");
+             for(int i=0; i<py.size();i++)
+                Rprintf("[ %f %f ], \n",py[i][0], py[i][1]);
+              Rprintf("\n");
+  #endif
+             /** Circle points*/
+             std::vector<STGM::CPoint2d> q = m_circle1.getExtremePointsCircle();
+
+  #if DEBUG
+             Rprintf("\n");
+             for(int i=0; i<q.size();i++)
+                Rprintf("[ %f %f ], \n",q[i][0], q[i][1]);
+              Rprintf("\n");
+  #endif
+
+             for(PointIterator it = q.begin(); it != q.end(); ++it)
+               py.push_back(*it);
+
+             /** push extreme points of the second circle cap */
+             if(m_type==9) {
+                q = m_circle2.getExtremePointsCircle();
+                for(PointIterator it = q.begin(); it != q.end(); ++it)
+                  py.push_back(*it);
+             }
+
+             PointVector::iterator max_x = std::max_element(py.begin(), py.end(), compareX);
+             PointVector::iterator min_x = std::min_element(py.begin(), py.end(), compareX);
+             PointVector::iterator max_y = std::max_element(py.begin(), py.end(), compareY);
+             PointVector::iterator min_y = std::min_element(py.begin(), py.end(), compareY);
+
+  #if DEBUG
+             Rprintf("sort y...\n");
+             for(int i=0; i<py.size();i++)
+               Rprintf("[ %f %f ], \n",py[i][0], py[i][1]);
+             Rprintf("\n");
+
+  #endif
+             p.push_back( STGM::CPoint2d( (*min_x)[0],(*max_x)[0]) ); // x coordinate sorted as [min, max]
+             p.push_back( STGM::CPoint2d( (*min_y)[1],(*max_y)[1]) ); // y coordinate sorted as [min, max]
+
+         }
+         return p;
+    }
+
 
 } /* STGM */

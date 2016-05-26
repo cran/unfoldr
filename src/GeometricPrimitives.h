@@ -8,9 +8,19 @@
 #ifndef GEOMETRIC_PRIMITIVES_H_
 #define GEOMETRIC_PRIMITIVES_H_
 
+#include <vector>
+#include <algorithm>
+
+#include "Rmath.h"
 #include "Vector.h"
 
+extern "C" void sdm(const double *r12,  const double *u1, const double *u2, const  double *lh1p, const double *lh2p, double *d);
+extern "C" void ContactRadius(double *u, double *li, double *lj, double *ri, double *rj,double *R, double *d, double *rmax);
+
 namespace STGM {
+
+  typedef std::vector<STGM::CPoint2d> PointVector;
+  typedef std::vector<STGM::CPoint2d>::iterator PointIterator;
 
   void real_eval(double *a, int *n, double *evalf, int *err);
 
@@ -186,6 +196,7 @@ namespace STGM {
         double c;
    };
 
+   typedef std::vector<STGM::CPlane> LateralPlanes;
 
    /**
     * @brief Circle 3d
@@ -194,18 +205,24 @@ namespace STGM {
    {
    public:
      CCircle3 () :
-       m_center(CVector3d(0,0,0)), m_n(CVector3d(0,0,1)), m_plane(STGM::CPlane()), m_radius(0),m_id(0)
+       m_center(CVector3d(0,0,0)), m_n(CVector3d(0,0,1)), m_plane(STGM::CPlane()), m_radius(0), m_id(0)
      {
        setPlaneIdx();
      };
 
-     virtual ~CCircle3 (){};
+     ~CCircle3 (){};
 
-     CCircle3(CVector3d &_center,double &_radius, CVector3d &_n, int id)
+     CCircle3(CVector3d &_center,double &_radius, CVector3d &_n, int id = 0)
        : m_center(_center), m_n(_n), m_plane(STGM::CPlane(_n)), m_radius(_radius), m_id(id)
      {
        setPlaneIdx();
      }
+
+     CCircle3(CVector3d &_center, double &_radius )
+       : m_center(_center), m_n(CVector3d(0,0,1)), m_plane(STGM::CPlane()), m_radius(_radius), m_id(0)
+      {
+        setPlaneIdx();
+      }
 
      inline void setPlaneIdx() {
         switch(m_plane.idx()) {
@@ -220,6 +237,25 @@ namespace STGM {
        m_n = m_plane.n;
        setPlaneIdx();
      }
+
+     STGM::CPoint2d PointOnCircle(const double t) {
+       return STGM::CPoint2d( m_center[m_i]+m_radius*cos(t), m_center[m_j]+m_radius*sin(t) );
+     }
+
+     /**
+      * @brief   sample the ellipse border with np points
+      *
+      * @param P         Point vector of sampled points
+      * @param np        number of points to sample
+      */
+     void samplePoints(STGM::PointVector2d &P, int np) {
+       double t=0.0, s=2.0*M_PI / (double)np;
+       for(int k=0; k<np; ++k) {
+           P.push_back( PointOnCircle(t) );
+           t += s;
+       }
+     }
+
 
      inline int Id() { return m_id; }
 
@@ -248,6 +284,7 @@ namespace STGM {
       return false;
      }
 
+     inline double area() { return M_PI*m_radius*m_radius; }
 
      CVector3d m_center, m_n;
      STGM::CPlane m_plane;
@@ -262,18 +299,19 @@ namespace STGM {
 
    class CSphere :  public CGeometry {
       public:
+       const char *m_label;
 
-       CSphere(double _x, double _y, double _z, double _r, int id=0)
-         : type(0), m_id(id), m_center(CVector3d(_x,_y,_z)), m_r(_r)
+        CSphere(double _x, double _y, double _z, double _r, int id=0, const char *label = "N", int interior=1)
+         : m_label(label), m_crack(0), m_id(id), m_center(CVector3d(_x,_y,_z)), m_r(_r), m_interior(interior)
         {
         }
 
-        CSphere(const CVector3d &_center, const double &_r, const int id)
-         : type(0), m_id(id), m_center(_center), m_r(_r)
+        CSphere(const CVector3d &_center, const double &_r, const int id, const char *label = "N", int interior=1)
+         : m_label(label), m_crack(0), m_id(id), m_center(_center), m_r(_r), m_interior(interior)
         {
         }
 
-        virtual ~CSphere() {};
+        ~CSphere() {};
 
         CVector3d& center() { return m_center; }
         const CVector3d& center() const { return m_center; }
@@ -283,10 +321,51 @@ namespace STGM {
         double& r() { return m_r; }
         const double& r() const { return m_r; }
 
+        int& interior() { return m_interior; }
+        const int& interior() const { return m_interior; }
+
+        const char * label() const { return m_label; }
+        void setCrackType(int crack) { m_crack=crack; }
+
+        /**
+         * @brief "crack" is alway "delam"
+         *
+         * @param n  normal vector of plane to project on
+         * @return   CCircle3
+         */
+        CCircle3 project(CVector3d &n) { return CCircle3(m_center,m_r,n);  }
+        inline double projectionArea() { return M_PI*SQR(m_r); }
+
+        double sphereDistance(CSphere &s, double &alpha) const {
+          CVector3d d(m_center), z(0,0,1);
+          d -= s.m_center;
+          double len = d.Length();
+          alpha = asin(d.dot(z)/len);
+          return len;
+        }
+
+        inline double distance(CSphere &s, double &alpha) {  return sphereDistance(s, alpha); }
+
+        /**
+          * @brief Sample points and return area of projection
+          *
+          * @param P       Point vector of points
+          * @param np      number of points to sample
+          * @return        area of ellipse
+          */
+        inline double projectedPointsWithArea(PointVector2d &P, int np) {
+          CVector3d n(0,0,1);
+          CCircle3 circle(m_center,m_r,n);
+          circle.samplePoints(P,np);
+          return M_PI*SQR(m_r);
+        }
+
+
       private:
-        int type, m_id;
+        int m_crack, m_id;
         CVector3d m_center;
         double m_r;
+        int m_interior;
 
       };
 
@@ -461,6 +540,21 @@ namespace STGM {
     }
 
     /**
+     * @brief   sample the ellipse border with np points
+     *
+     * @param P         Point vector of sampled points
+     * @param np        number of points to sample
+     */
+    void samplePoints(STGM::PointVector2d &P, int np) {
+      double t=0.0, s=2.0*M_PI / (double)np;
+      for(int k=0; k<np; k++) {
+          P.push_back( PointOnEllipse(t) );
+          t += s;
+      }
+    }
+
+
+    /**
      *
      * @return major axis
      */
@@ -552,10 +646,250 @@ namespace STGM {
   };
 
 
+  /**
+   * @brief Ellipse in 3d
+   */
+
+  class CEllipse3 : public CGeometry
+  {
+  public:
+
+      CEllipse3() :
+        m_center(STGM::CVector3d(0,0,0)), m_n(STGM::CVector3d(0,0,1)),
+        m_majorAxis(STGM::CVector3d(0,0,1)), m_minorAxis(STGM::CVector3d(0,0,0)),
+        m_a(1), m_b(1), m_phi(0), m_i(0), m_j(1), m_type(7), m_side(0), m_side0(0)                 /// default values because not intersected yet
+      {
+         m_psi[0] = 0;
+         m_psi[1] = 0;
+      }
+
+      virtual ~CEllipse3() {};
+
+      CEllipse3(STGM::CVector3d &center, STGM::CVector3d &n, /* STGM::CVector3d &u, */
+                STGM::CVector3d &major,STGM::CVector3d &minor,
+                double a, double b, double phi, double psi0, double psi1) :
+                  m_center(center), m_n(n), m_majorAxis(major), m_minorAxis(minor), m_a(a), m_b(b),
+                  m_phi(phi), m_i(0), m_j(1),
+                  m_type(7), m_side(0),  m_side0(0)     /// default values because not intersected yet
+      {
+        m_psi[0] = psi0;
+        m_psi[1] = psi1;
+      };
+
+
+      /**
+       *
+       * @return major axis
+       */
+      double a() const { return m_a; }
+      /**
+       *
+       * @return minor axis
+       */
+      double b() const { return m_b; }
+
+      /**
+       *
+       * @return angle major axis to x axis
+       */
+      double & phi() { return m_phi; }
+      double phi() const { return m_phi; }
+
+      /**
+       *
+       * @return
+       */
+      const double *psi() const { return m_psi; }
+
+      STGM::CVector3d &center()  { return m_center;}
+      const STGM::CVector3d &center()  const { return m_center;}
+
+      STGM::CVector3d &majorAxis()  { return m_majorAxis;}
+      const STGM::CVector3d &majorAxis()  const { return m_majorAxis;}
+
+      STGM::CVector3d &minorAxis()  { return m_minorAxis;}
+      const STGM::CVector3d &minorAxis()  const { return m_minorAxis;}
+
+
+      /**
+       * @brief Set dx/dt=0 and dy/dt=0 -> reorder for t values
+       *     Helper functions for calculation of extreme points of the ellipse
+       *
+       * @return Extreme points of the ellipse
+       */
+      STGM::CPoint2d getValue() {
+        return STGM::CPoint2d(atan(-m_b*tan(m_phi)/m_a),atan(m_b/(tan(m_phi)*m_a)));
+      }
+
+      STGM::CPoint2d PointOnEllipse(const double t) {
+        return STGM::CPoint2d(m_center[m_i] + m_a*cos(t)*cos(m_phi)-m_b*sin(t)*sin(m_phi),
+                              m_center[m_j] + m_a*cos(t)*sin(m_phi)+m_b*sin(t)*cos(m_phi));
+      }
+
+      /**
+      * @brief Minimum/maximum y coordinates of the ellipse
+      *        which is not unique and needs to be sorted
+      *
+      * @return
+      */
+     STGM::CPoint2d getMinMax_Y() {
+       double y1,y2,t;
+       t = getValue()[1];
+       y1 = m_center[m_j] + m_a*cos(t)*sin(m_phi)+m_b*sin(t)*cos(m_phi);
+       y2 = m_center[m_j] + m_a*cos(t+M_PI)*sin(m_phi)+m_b*sin(t+M_PI)*cos(m_phi);
+
+       return ( y1<y2 ? STGM::CPoint2d(y1,y2) : STGM::CPoint2d(y2,y1)  );
+     }
+     /**
+      * @brief Minimum/maximum x coordinates of the ellipse
+      *       which is not unique and needs to be sorted
+      *
+      * @return
+      */
+     STGM::CPoint2d getMinMax_X()
+     {
+        double x1,x2,t;
+        t = getValue()[0];
+        x1 = m_center[m_i] + m_a*cos(t)*cos(m_phi)-m_b*sin(t)*sin(m_phi);
+        x2 = m_center[m_i] + m_a*cos(t+M_PI)*cos(m_phi)-m_b*sin(t+M_PI)*sin(m_phi);
+
+        return ( x1<x2 ? STGM::CPoint2d(x1,x2) : STGM::CPoint2d(x2,x1)  );
+     }
+
+     bool isInsideEllipse(double x, double y) {
+       double d1 = cos(m_phi)*(x-m_center[m_i]) + sin(m_phi)*(y-m_center[m_j]);
+       double d2 = sin(m_phi)*(x-m_center[m_i]) - cos(m_phi)*(y-m_center[m_j]);
+       return (pow(d1 ,2.0)/pow(m_a,2) + pow(d2 ,2.0)/pow(m_b,2)) <= 1;
+     }
+
+    /**
+     * @brief Is requested point inside the ellipse / ellipse_arc / ellipse_segment ?
+     *
+     * @param x x-coordinate
+     * @param y y-coordinate
+     * @return boolean
+     */
+     bool isInside(double x, double y);
+
+     /**
+      * @brief Does the ellipse/ellipse arc/ellipse segment fully lie inside the window?
+      *
+      * @param win
+      * @return true/false
+      */
+     bool isInWindow(STGM::CWindow &win);
+
+     /**
+      * @brief Minimum/Maximum coordinates to run through
+      *        for digitizing the ellipse intersections
+      *
+      * @return [min_x,max_x],[min_y,max_y]
+      */
+     PointVector getMinMaxPoints();
+
+     /**
+      * @brief Minimum/Maximum coordinates of points on the ellipse
+      *
+      * @return All four points, not sorted
+      */
+     PointVector getEllipseExtremePoints();
+
+     /**
+      * @brief Extreme points on the ellipse
+      *        Not unique, Maximum can return minimum coordinate point
+      * @return Point
+      */
+     STGM::CPoint2d getMaxEllipsePoint_X() {
+      double t = getValue()[0];
+      return PointOnEllipse(t);
+     }
+
+     STGM::CPoint2d getMaxEllipsePoint_Y() {
+      double t = getValue()[1];
+      return PointOnEllipse(t);
+     }
+
+     STGM::CPoint2d getMinEllipsePoint_X() {
+      double t = getValue()[0]+M_PI;
+      return PointOnEllipse(t);
+     }
+
+     STGM::CPoint2d getMinEllipsePoint_Y() {
+      double t = getValue()[1]+M_PI;
+      return PointOnEllipse(t);
+     }
+
+     /**@brief Get the side of the cut off vector on which the point lies
+      *
+      * @param p Point to determine the side of
+      * @param idx Either idx=0 for first cut off angle (ELLIPSE_ARC) and idx=1 for the second (ELLIPSE_SEG)
+      * @return -1 or 0  or 1
+      */
+     int whichSide(STGM::CPoint2d p, int idx ) {
+       STGM::CPoint2d p1(PointOnEllipse(m_psi[idx]));
+       STGM::CPoint2d p2(PointOnEllipse(2*M_PI-m_psi[idx]));
+
+       return (int)(sign( m_minorAxis[m_j]*(p[0]-p2[0])-m_minorAxis[m_i]*(p[1]-p2[1])) );
+     }
+
+     /**
+      * @brief Set the side, where extreme points
+      *        of the ellipse are not cut off by
+      *        the angle psi[0]. This function is
+      *        only once called by the intersector
+      *        for ellipse type {ELLIPSE_ARC | ELLIPSE_SEG }.
+      *
+      */
+     void setReferenceSide() {
+       /// choose either 0
+       double t = 0;
+       /// or PI as a point on the ellipse to determine the the cut off side
+       if(m_side<0) t = M_PI;
+       m_side0 = (int)(sign(whichSide(PointOnEllipse(t),0)));
+     }
+
+     /**
+      *
+      * @return bounding rectangle
+      */
+     CBoundingRectangle & getBoundingRectangle() { return m_br; }
+
+       /**
+      * @brief Comparison functions
+      */
+     static bool compareX (STGM::CPoint2d x,STGM::CPoint2d y) { return (x[0]<y[0]);  }
+     static bool compareY (STGM::CPoint2d x,STGM::CPoint2d y) { return (x[1]<y[1]);  }
+
+
+     /** members */
+     STGM::CVector3d m_center, m_n;
+     STGM::CVector3d m_majorAxis, m_minorAxis;
+
+     double m_a, m_b;
+     double m_phi, m_psi[2];
+     int m_i, m_j;
+     int m_type;                                // ellipse type
+     int m_side;                                // side of origin0 to the plane
+     int m_side0;                               // side, where extreme points of the ellipse are not cut off by angle psi
+     STGM::CCircle3 m_circle1, m_circle2;       // circle caps if type {ELLIPSE_ARC | ELLIPSE_SEG }
+     STGM::CBoundingRectangle m_br;
+  };
+
+  /**
+   * @brief disc projection  for spheroid and cylinder
+   *
+   * @param center     3d center of spheroid or clyinder
+   * @param u          orientation vector
+   * @param a          axis length (spheroid) or radius (cylinder)
+   * @param phi        angle phi
+   * @param id         id
+   */
+  STGM::CEllipse2 crackProjection(STGM::CVector3d &center, STGM::CVector3d &u, double a, double phi, int id);
+
    /**
-    *   @brief CSpheroid
+    *   @brief CSpheroid class
     */
-   class CSpheroid {
+   class CSpheroid : public CGeometry{
      public:
       const char *m_label;
       typedef enum { PROLATE = 0, OBLATE = 1 } spheroid_type;
@@ -586,6 +920,8 @@ namespace STGM {
         */
        const CMatrix3d &rotationMatrix() const { return m_R; }
 
+       double distance(CSpheroid &s, double &alpha) {  return spheroidDistanceAsCylinder(s,alpha);  }
+
        /**
         * @brief Approximate (euclidian) distance of spheroids
         *        by min distance of cylinders
@@ -593,29 +929,45 @@ namespace STGM {
         * @param sp  spheroids
         * @return
         */
-       double spheroidDistanceAsCylinder(CSpheroid &sp) const;
+       double spheroidDistanceAsCylinder(CSpheroid &sp, double &alpha) const;
 
        /**
         *
         * @return the crack projection
         */
-       CEllipse2 spheroidCrackProjection() const;
+       CEllipse2 delamProjection() const;
 
        /**
        * @return orthogonal projection of spheriod
        */
-       STGM::CEllipse2 spheroidProjection() const;
+       CEllipse2 spheroidProjection() const;
       /**
        *
        * @return orthogonal projection of spheriod's minor axis circle
        */
-       STGM::CEllipse2 spheroidCircleProjection() const;
+       CEllipse2 crackProjection() const;
 
+       /**
+        * @brief Sample points and return area of projection
+        *
+        * @param P       Point vector of points
+        * @param np      number of points to sample
+        * @return        area of ellipse
+        */
+       inline double projectedPointsWithArea(PointVector2d &P, int np) {
+           CEllipse2 e = spheroidProjection();
+           e.samplePoints(P,np);
+           return e.area();
+       }
+
+       /**
+        * @brief The defining spheroid 3d matrix
+        */
        void ComputeMatrixA();
        const CMatrix3d &MatrixA() const { return m_A; }
 
-       CVector3d &Center() { return m_center; }
-       const CVector3d &Center() const { return m_center; }
+       CVector3d &center() { return m_center; }
+       const CVector3d &center() const { return m_center; }
 
        double a() const { return m_a; }
        double b() const { return m_b;  }
@@ -637,6 +989,9 @@ namespace STGM {
 
        const char * label() const { return m_label; }
 
+       inline bool isInWindow(STGM::CWindow &win) {   return false;   }
+
+
     private:
       CVector3d m_center, m_u;
       double m_a, m_b;
@@ -645,6 +1000,141 @@ namespace STGM {
       CMatrix3d m_R, m_A, m_invA;
 
    };
+
+   /**
+    *  @brief Cylinder
+    */
+
+    class CCylinder : public CGeometry
+    {
+    public:
+      const char *m_label;
+      typedef enum { UNIFORM_D = 0, BETAISOTROP_D = 1, MISES_D = 2} direction_type;
+
+      CCylinder(CVector3d &center, CVector3d &u, double h, double r,
+                 double theta, double phi, double radius, int id, const char *label="N", int interior=1 ) :
+            m_label(label),
+            m_center(center),
+            m_u(u),
+            m_h(h),
+            m_r(r),
+            m_radius(radius),
+            m_theta(theta),
+            m_phi(phi),
+            m_id(id),
+            m_interior(interior),
+            m_crack(0)
+        {
+          m_R = RotationMatrixFrom001(u);
+          m_u.Normalize();
+          updateOrigins();
+        };
+
+        ~CCylinder() {};
+
+        inline int Id() { return m_id; }
+
+        /**
+        * @return Center of the Cylinder.
+        */
+        CVector3d & center() { return m_center; }
+        const CVector3d & center() const { return m_center; }
+
+        double cylinderDistance(CCylinder &cyl, double &alpha) const;
+        inline double distance(CCylinder &s, double &alpha) {  return cylinderDistance(s,alpha); }
+
+        /**
+        * @return Origin0 of the Cylinder.
+        */
+        CVector3d &origin0() { return m_origin0; }
+        const CVector3d &origin0() const { return m_origin0; }
+
+        /**
+        * @return Origin1 of the Cylinder.
+        */
+        CVector3d &origin1() { return m_origin1; }
+        const CVector3d &origin1() const { return m_origin1; }
+
+        /**
+        * @return rotation matrix
+        */
+        const CMatrix3d &rotationMatrix() const { return m_R; }
+
+        /**
+        * @return Rotation axis direction vector.
+        */
+        CVector3d &u() { return m_u; }
+        const CVector3d &u() const { return m_u; }
+
+        /**
+        * @return radius of cylinder
+        */
+        double r() const { return m_r; }
+        double &r() { return m_r; }
+
+        /**
+        * @return exact simulation radius
+        */
+        double radius() const { return m_radius; }
+        double &radius() { return m_radius; }
+
+        /**
+        * @return Height of the Cylinder.
+        */
+        double h() const { return m_h; }
+        double &h() { return m_h; }
+
+        /**
+        * @return Polar angle of the Cylinder.
+        */
+        double theta() const { return m_theta; }
+
+        /**
+        * @return Plane angle of the Cylinder.
+        */
+        double phi() const { return m_phi; }
+        double &phi() { return m_phi; }
+
+        void setCrackType(int crack) { m_crack = crack; }
+
+        CEllipse2 crackProjection() const;
+
+        double delamProjection(PointVector2d &P, int npoints);
+        double projectedPointsWithArea(PointVector2d &P, int npoints);
+
+        int interior() const { return m_interior; }
+        int &interior() { return m_interior; }
+
+        const char * label() const { return m_label; }
+        inline bool isInWindow(STGM::CWindow &win) {   return false;   }
+
+        /**
+         * @brief Update origins of cylinder after rotation
+         */
+        void updateOrigins() {
+          double len = 0.5*m_h;
+          m_origin0[0] = m_center[0]-len*m_u[0];
+          m_origin0[1] = m_center[1]-len*m_u[1];
+          m_origin0[2] = m_center[2]-len*m_u[2];
+
+          m_origin1[0] = m_center[0]+len*m_u[0];
+          m_origin1[1] = m_center[1]+len*m_u[1];
+          m_origin1[2] = m_center[2]+len*m_u[2];
+        }
+
+
+    private:
+        // members
+        CVector3d m_center, m_u;
+        CVector3d m_origin0, m_origin1;
+        CMatrix3d m_R;
+        double m_h, m_r, m_radius;
+        double m_theta, m_phi;
+        int m_id, m_interior, m_crack;
+    };
+
+    typedef std::vector<CCylinder > Cylinders;
+
 
    /**
      *  @brief Box
@@ -763,7 +1253,7 @@ namespace STGM {
        *
        * @return lateral planes
        */
-      const std::vector<CPlane> &getLateralPlanes() {
+       LateralPlanes & getLateralPlanes() {
         if(m_lateral_planes.empty())
           ConstructBoxLateralPlanes();
         return m_lateral_planes;

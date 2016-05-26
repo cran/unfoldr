@@ -21,7 +21,6 @@ getSphereSystem <- function(S) {
   } else S
 }
 
-
 #' Setup sphere system
 #'
 #' Reinitialize sphere system after R workspace reloading
@@ -69,11 +68,12 @@ setupSphereSystem <- function(S,pl=0) {
 #' Setting \code{size} equal to 'rlnorm' generates log normally distributed radii for a stationary Poisson 
 #' ball system according to a general approach of exact simulation (see reference below). 
 #' 
-#' @param theta simulation parameters
-#' @param lam   mean number of spheres per unit volume
-#' @param rdist string, radii random generating function name
-#' @param box 	simualtion box
-#' @param pl 	print level
+#' @param theta  simulation parameters
+#' @param lam    mean number of spheres per unit volume
+#' @param rdist  string, radii random generating function name
+#' @param box 	 simualtion box
+#' @param pl 	 print level
+#' @param label  some character as a label, 'N' (default)
 #'
 #' @return list of class \code{spheres} if \code{pl}>100 or empty list
 #'
@@ -85,7 +85,7 @@ setupSphereSystem <- function(S,pl=0) {
 #' @examples
 #'  theta <- list("meanlog"=-2.5,"sdlog"=0.2)
 #'  S <- simSphereSystem(theta,lam=1000,rdist="rlnorm",pl=101)
-simSphereSystem <- function(theta,lam,rdist,box=list(c(0,1)), pl=0) {
+simSphereSystem <- function(theta,lam,rdist,box=list(c(0,1)), pl=0, label="N") {
 	theta <- list("lam"=lam,"radii"=theta)
 	if(!is.numeric(lam) || !(lam>0) ) 
 		stop("Expected 'lam' as non-negative numeric argument")
@@ -102,7 +102,7 @@ simSphereSystem <- function(theta,lam,rdist,box=list(c(0,1)), pl=0) {
 		names(box) <- c("xrange","yrange","zrange")
 	
 	cond <- list("rdist"=rdist,"box"=box, "pl"=pl,
-			      "rho"=.GlobalEnv)
+			      "rho"=.GlobalEnv, "label"=label)
 
 	if(cond$rdist=="const") {
 		structure(.Call(C_SphereSystem, theta, cond),box = box)

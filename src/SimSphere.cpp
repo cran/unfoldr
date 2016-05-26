@@ -14,17 +14,20 @@ static int PL = 0;
 
 #define MAX_ITER 100
 
-SEXP convert_R_SphereSystem(STGM::Spheres& spheres);
-SEXP convert_R_Circles(STGM::IntersectorSpherePlaneVec& objects);
+SEXP convert_R_SphereSystem(STGM::Spheres& spheres, STGM::CBox3 &box);
+SEXP convert_R_Circles(STGM::IntersectorSpheres& objects);
+STGM::CSphere convert_C_Sphere(SEXP R_sphere);
 STGM::Spheres convert_C_Spheres(SEXP R_spheres);
 
 R_Calldata buildRCallSpheres(SEXP R_param,SEXP R_cond) {
   int nprotect=0;
   R_Calldata d = Calloc(1,R_Calldata_s);
+
   d->call = R_NilValue;
   PROTECT(d->fname = getListElement( R_cond, "rdist")); ++nprotect;
   PROTECT(d->rho   = getListElement( R_cond, "rho"  )); ++nprotect;
   PROTECT(d->args  = getListElement( R_param,"radii")); ++nprotect;
+  PROTECT(d->label = getListElement( R_cond, "label"));  ++nprotect;
 
   /* radii distribution */
   const char *ftype = CHAR(STRING_ELT(d->fname, 0));
@@ -101,7 +104,7 @@ STGM::CBoolSphereSystem * InitSphereSystem(SEXP R_param, SEXP R_cond) {
 
 
 template< typename  F>
-void STGM::CBoolSphereSystem::simSpheres(F f) {
+void STGM::CBoolSphereSystem::simSpheres(F f, const char *label) {
   int nTry = 0;
   while(num==0 && nTry<MAX_ITER) {
         num = rpois(m_box.volume()*m_lam);
@@ -116,11 +119,11 @@ void STGM::CBoolSphereSystem::simSpheres(F f) {
   /* loop over all */
   for (size_t niter=0;niter<num; niter++) {
       STGM::CVector3d center(runif(0.0,1.0)*m[0],runif(0.0,1.0)*m[1],runif(0.0,1.0)*m[2]);
-      m_spheres.push_back( STGM::CSphere(center, f(), m_spheres.size()+1));
+      m_spheres.push_back( STGM::CSphere(center, f(), m_spheres.size()+1,label));
   }
 }
 
-void STGM::CBoolSphereSystem::simSpheresPerfect(double mx, double sdx) {
+void STGM::CBoolSphereSystem::simSpheresPerfect(double mx, double sdx, const char *label) {
   int nTry=0, k=0;
 
   double p[4],
@@ -151,7 +154,7 @@ void STGM::CBoolSphereSystem::simSpheresPerfect(double mx, double sdx) {
                              runif(0.0,1.0)*(m_box.m_size[1]+2*r)+(m_box.m_low[1]-r),
                              runif(0.0,1.0)*(m_box.m_size[2]+2*r)+(m_box.m_low[2]-r));
 
-      m_spheres.push_back( STGM::CSphere(center, r, m_spheres.size()+1));
+      m_spheres.push_back( STGM::CSphere(center, r, m_spheres.size()+1,label));
   }
 }
 
@@ -170,18 +173,22 @@ void STGM::CBoolSphereSystem::simSphereSys(R_Calldata d)
        if(strcmp(fname, "const" ))
          p2=REAL_ARG_LIST(d->args,1);
 
+       // set spheroid label
+       const char *label = translateChar(asChar(d->label));
+
        if(!strcmp(fname, "rlnorm")) {
-           simSpheresPerfect(p1,p2);
+           simSpheresPerfect(p1,p2,label);
        } else {
            R_rndGen_t<rdist2_t> rrandom(p1,p2,fname);
 
            /* simulate with R's random generating functions */
-           simSpheres<R_rndGen_t<rdist2_t> >(rrandom);
+           simSpheres<R_rndGen_t<rdist2_t> >(rrandom,label);
        }
    } else {
        /* eval R call for user defined radii distribution */
+       const char *label = translateChar(asChar(d->label));
        R_eval_t<double> reval(d->call, d->rho);
-       simSpheres<R_eval_t<double> &>(reval);
+       simSpheres<R_eval_t<double> &>(reval,label);
    }
    PutRNGstate();
 }
@@ -194,7 +201,7 @@ SEXP GetSphereSystem(SEXP ext)
   STGM::CBoolSphereSystem *sp = (STGM::CBoolSphereSystem *)(getExternalPtr(ext));
   SEXP R_spheres = R_NilValue;
   STGM::Spheres &spheres = sp->refObjects();
-  PROTECT(R_spheres = convert_R_SphereSystem(spheres));
+  PROTECT(R_spheres = convert_R_SphereSystem(spheres,sp->box()));
 
   setAttrib(R_spheres, install("eptr"), ext);
   SET_CLASS_NAME(R_spheres,"spheres");
@@ -238,7 +245,7 @@ SEXP SphereSystem(SEXP R_param, SEXP R_cond)
   if(PL>100) {
     Rprintf("Convert... \n");
     STGM::Spheres &spheres = sp->refObjects();
-    PROTECT(R_spheres = convert_R_SphereSystem(spheres));
+    PROTECT(R_spheres = convert_R_SphereSystem(spheres, sp->box()  ));
   } else {
     PROTECT(R_spheres = allocVector(VECSXP,0));  /* return empty list */
   }
@@ -247,7 +254,7 @@ SEXP SphereSystem(SEXP R_param, SEXP R_cond)
   PROTECT(Rextp = CreateSpherePointer(sp));
 
   setAttrib(R_spheres, install("eptr"), Rextp);
-  SET_CLASS_NAME(R_spheres,"spheres");
+  SET_CLASS_NAME(R_spheres,"sphere");
 
   deleteRCall(cdata);
   UNPROTECT(2);
@@ -268,7 +275,7 @@ SEXP SimulateSpheresAndIntersect(SEXP R_param, SEXP R_cond) {
   double dz = asReal(getListElement(R_cond,"dz"));
   STGM::CPlane plane(STGM::CVector3d(0,0,1), dz);
 
-  STGM::IntersectorSpherePlaneVec objects;
+  STGM::IntersectorSpheres objects;
   sp->IntersectWithPlane(objects,plane);
   //Rprintf("objects: %d , pl: %d, dz: %f \n",objects.size(),PL,dz);
 
@@ -297,14 +304,14 @@ SEXP IntersectSphereSystem(SEXP ext, SEXP R_n, SEXP R_z) {
   STGM::CBoolSphereSystem *sp = static_cast<STGM::CBoolSphereSystem *>(getExternalPtr(ext));
   if(PL>100) Rprintf("Intersect with plane: %d \n", sp->refObjects().size());
 
-  STGM::IntersectorSpherePlaneVec objects;
+  STGM::IntersectorSpheres objects;
   sp->IntersectWithPlane(objects,plane);
 
   return convert_R_Circles(objects);
 }
 
 
-void STGM::CBoolSphereSystem::IntersectWithPlane(STGM::IntersectorSpherePlaneVec &objects, STGM::CPlane &plane)
+void STGM::CBoolSphereSystem::IntersectWithPlane(STGM::IntersectorSpheres &objects, STGM::CPlane &plane)
 {
   /// Intersect only objects fully inside the observation window
    int i=0,j=0;
@@ -327,16 +334,49 @@ void STGM::CBoolSphereSystem::IntersectWithPlane(STGM::IntersectorSpherePlaneVec
    }
 }
 
-SEXP convert_R_SphereSystem(STGM::Spheres& spheres) {
+STGM::CSphere convert_C_Sphere(SEXP R_sphere) {
+  SEXP R_ctr;
+  int interior=1;
+  const char *label = "N";
+
+  PROTECT(R_ctr = AS_NUMERIC( getListElement( R_sphere, "center")));
+
+  int id = asInteger(AS_INTEGER( getListElement( R_sphere, "id")));
+  double r = asReal(AS_NUMERIC(getListElement(R_sphere, "r")));
+
+  if(!isNull(getAttrib(R_sphere, install("label"))))
+    label = translateChar(asChar(getAttrib(R_sphere, install("label"))));
+
+  if(!isNull(getAttrib(R_sphere, install("interior"))))
+    interior = asLogical(getAttrib(R_sphere, install("interior")));
+
+  UNPROTECT(1);
+  return STGM::CSphere(REAL(R_ctr)[0],REAL(R_ctr)[1],REAL(R_ctr)[2],r,id,label,interior);
+}
+
+
+SEXP convert_R_SphereSystem(STGM::Spheres& spheres, STGM::CBox3 &box) {
   int ncomps=3;
 
   SEXP R_resultlist = R_NilValue;
   PROTECT(R_resultlist = allocVector(VECSXP, spheres.size()) );
 
+  STGM::CVector3d n(0,0,1);
+  const STGM::LateralPlanes &planes = box.getLateralPlanes();
+
   SEXP R_tmp, R_names, R_center;
   for(size_t k=0;k<spheres.size();k++)
   {
     STGM::CSphere &sphere = spheres[k];
+
+    STGM::IntersectorSphere intersector(sphere, box.m_size);
+    Rboolean interior = (Rboolean) TRUE;
+    for(size_t j=0; j<planes.size() ; ++j) {
+         if( intersector(planes[j])) {
+           interior = (Rboolean) FALSE;
+           break;
+         }
+    }
 
     PROTECT(R_tmp = allocVector(VECSXP,ncomps));
     PROTECT(R_center = allocVector(REALSXP, 3));
@@ -355,6 +395,10 @@ SEXP convert_R_SphereSystem(STGM::Spheres& spheres) {
     SET_STRING_ELT(R_names, 2, mkChar("r"));
 
     setAttrib(R_tmp, R_NamesSymbol, R_names);
+    setAttrib(R_tmp, install("label"), mkString(sphere.label()) );
+    setAttrib(R_tmp, install("interior"), ScalarLogical(interior));
+    setAttrib(R_tmp, install("area"), ScalarReal(sphere.projectionArea()));
+
     SET_VECTOR_ELT(R_resultlist,k,R_tmp);
     UNPROTECT(3);
   }
@@ -370,14 +414,22 @@ STGM::Spheres convert_C_Spheres(SEXP R_spheres) {
   STGM::Spheres spheres;
   spheres.reserve(N);
 
-  double r;
+  double r=0;
+  int interior=1;
+  const char *label = "N";
   for(int i=0; i<N; i++) {
       PROTECT(R_tmp = VECTOR_ELT(R_spheres,i));
       PROTECT(R_ctr = AS_NUMERIC( getListElement( R_tmp, "center")));
       id = asInteger (AS_INTEGER( getListElement( R_tmp, "id")));
       r = asReal(getListElement( R_tmp, "r"));
 
-      spheres.push_back(STGM::CSphere(REAL(R_ctr)[0],REAL(R_ctr)[1],REAL(R_ctr)[2],r,id));
+      if(!isNull(getAttrib(R_tmp, install("label"))))
+        label = translateChar(asChar(getAttrib(R_tmp, install("label"))));
+
+      if(!isNull(getAttrib(R_tmp, install("interior"))))
+       interior = asLogical(getAttrib(R_tmp, install("interior")));
+
+      spheres.push_back(STGM::CSphere(REAL(R_ctr)[0],REAL(R_ctr)[1],REAL(R_ctr)[2],r,id,label,interior));
       UNPROTECT(2);
   }
 
@@ -385,7 +437,7 @@ STGM::Spheres convert_C_Spheres(SEXP R_spheres) {
 }
 
 
-SEXP convert_R_Circles(STGM::IntersectorSpherePlaneVec& objects) {
+SEXP convert_R_Circles(STGM::IntersectorSpheres & objects) {
   int ncomps=3;
 
   SEXP R_resultlist = R_NilValue;

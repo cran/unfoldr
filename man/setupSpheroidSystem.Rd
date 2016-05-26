@@ -4,7 +4,7 @@
 \alias{setupSpheroidSystem}
 \title{Setup spheroid system}
 \usage{
-setupSpheroidSystem(S, mu = c(0, 0, 1), pl = 0)
+setupSpheroidSystem(S, mu = c(0, 1, 0), pl = 0)
 }
 \arguments{
 \item{S}{sphere system}

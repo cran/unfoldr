@@ -133,6 +133,7 @@ public:
   CVector(const CVector &v);
   CVector(T x0=0.0, T x1=0.0, T x2=0.0);
   CVector(const std::vector<T> &v);
+  CVector(T* p);
 
   CVector& operator= (const CVector &v);
   inline T & operator[](const int i);
@@ -193,6 +194,12 @@ CVector<T,N>::CVector(const std::vector<value_t> &v) : n_(N) {
   if(v.size() != n_)
     error("Vector Length error in vector copy");
   Memcpy(data,v.data(),n_);
+}
+
+template <class T,size_t N>
+CVector<T,N>::CVector(T * v) : n_(N) {
+  for (size_t i=0; i<n_; i++)
+    data[i] = v[i];
 }
 
 

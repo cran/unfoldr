@@ -9,6 +9,8 @@
 
 #include "SimSphere.h"
 #include "SimEllipsoid.h"
+#include "SimCylinder.h"
+
 #include "unfold.h"
 
 #ifdef _OPENMP
@@ -74,7 +76,7 @@ struct  CArray {
 	  return n*M1+m*L1+l*K1+k*J1+j*I+i;
   }
 
-  void clear() { for(int i=0;i<sizeN;i++)  array[i]=0.0; }
+  void clear() { for(size_t i=0;i<sizeN;i++)  array[i]=0.0; }
 
   size_t size() const {
     size_t sz=1;
@@ -91,63 +93,6 @@ typedef CArray<6> CArray6;
 typedef CArray<3> CArray3;
 
 
-
-
-
-/**
- * @brief Sample from x={0,1,2,3}
- *        according to given cumulative probabilities p
- *        Number of elements to sample from is n=4
- *
- * @param p         given cumulative probabilities
- * @param k [out]   sampled (int) value
- */
-void sample_k(double *p, int *k) {
-  int j;
-  double rU = unif_rand();
-  for (j=0;j<3;j++) {
-      if (rU <= p[j])
-        break;
-  }
-  *k=j;
-}
-
-/**
- * @brief Calculate probabilities
- *
- * @param mx       mu of logN major semi-axis
- * @param sdx      sd of logN major semi-axis
- * @param lx       upper box limit x
- * @param ly       upper box limit y
- * @param lz       upper box limit z
- * @param p        [out] probabilities
- * @param mu       [out] factor for intensity
- */
-void cum_prob_k(double mx, double sdx2, double lx, double ly, double lz, double *p, double *mu) {
-  double a[4] = {lx*ly*lz,
-                 2.0*(lx*ly+lx*lz+ly*lz),
-                 M_PI*(lx+ly+lz),
-                 4.0*M_PI/3.0};
-
-  p[0] = a[0];
-  p[1] = a[1]*exp(mx+0.5*sdx2);
-  p[2] = a[2]*exp(2.0*(mx+sdx2));
-  p[3] = a[3]*exp(3.0*mx+4.5*sdx2);
-
-  double mk=0.0;
-  for (int i=0;i<4; i++)
-    mk += p[i];
-
-  p[0] /= mk;
-  p[1] /= mk;
-  p[2] /= mk;
-  p[3] /= mk;
-
-  /* cumulative probabilities */
-  for (int i=1;i<4; i++)
-    p[i] += p[i-1];
-  *mu=mk;
-}
 
 /**
  * @brief Binary search index of element x in vector vec
@@ -693,7 +638,7 @@ SEXP Binning1d(SEXP Rx, SEXP Rbin) {
 
 
 /* R Interface functions  */
-#define CALLDEF(name, n)  {#name, (DL_FUNC) &name, n}
+#define CALLDEF(name, n)  { #name, (DL_FUNC) &name, n}
 static R_CMethodDef CEntries[]  = {
       CALLDEF(em_saltykov,5),
       CALLDEF(em_saltykov_p,3),
@@ -702,12 +647,13 @@ static R_CMethodDef CEntries[]  = {
 
 static R_CallMethodDef CallEntries[] = {
       CALLDEF(EllipsoidSystem,2),
+      CALLDEF(CylinderSystem,2),
       CALLDEF(IntersectSpheroidSystem,3),
       CALLDEF(IntersectSphereSystem,3),
+      CALLDEF(UpdateIntersections,2),
       CALLDEF(SphereSystem,2),
       CALLDEF(GetSphereSystem,1),
       CALLDEF(GetMaxRadius,1),
-      CALLDEF(UpdateIntersections,3),
       CALLDEF(GetEllipsoidSystem,1),
       CALLDEF(SetupSpheroidSystem,4),
       CALLDEF(SetupSphereSystem,4),

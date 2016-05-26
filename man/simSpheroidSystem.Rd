@@ -6,7 +6,7 @@
 \usage{
 simSpheroidSystem(theta, lam, size, shape = "const",
   orientation = "rbetaiso", stype = c("prolate", "oblate"), rjoint = NULL,
-  box = list(c(0, 1)), mu = c(0, 0, 1), pl = 0, label = "N")
+  box = list(c(0, 1)), mu = c(0, 1, 0), pl = 0, label = "N")
 }
 \arguments{
 \item{theta}{simulation parameters}
@@ -25,7 +25,7 @@ simSpheroidSystem(theta, lam, size, shape = "const",
 
 \item{box}{simulation box}
 
-\item{mu}{main orientation axis}
+\item{mu}{main orientation axis, \code{mu=c(0,1,0)} (default)}
 
 \item{pl}{optional: print level}
 

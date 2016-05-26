@@ -4,14 +4,12 @@
 \alias{updateIntersections}
 \title{Updated spheroid intersections}
 \usage{
-updateIntersections(S, id, cond)
+updateIntersections(S, box)
 }
 \arguments{
-\item{S}{spheroid system}
+\item{S}{geometric objects system}
 
-\item{id}{integer vector of spheroid id numbers}
-
-\item{cond}{conditioning object}
+\item{box}{the simulation box}
 }
 \value{
 integer vector indicating intersection=\code{1} or non intersection by \code{0}
@@ -20,7 +18,7 @@ integer vector indicating intersection=\code{1} or non intersection by \code{0}
 Determine intersections of spheroids with bounding (simulation) box
 }
 \details{
-For a given set of spheroid id numbers calculate if these spheroids intersect 
+For a given list of spheroids, spheres or cylinders calculate if these objects intersect 
 the simulation box or not.
 }
 

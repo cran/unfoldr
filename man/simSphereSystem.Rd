@@ -4,7 +4,8 @@
 \alias{simSphereSystem}
 \title{Simulation of sphere system}
 \usage{
-simSphereSystem(theta, lam, rdist, box = list(c(0, 1)), pl = 0)
+simSphereSystem(theta, lam, rdist, box = list(c(0, 1)), pl = 0,
+  label = "N")
 }
 \arguments{
 \item{theta}{simulation parameters}
@@ -16,6 +17,8 @@ simSphereSystem(theta, lam, rdist, box = list(c(0, 1)), pl = 0)
 \item{box}{simualtion box}
 
 \item{pl}{print level}
+
+\item{label}{some character as a label, 'N' (default)}
 }
 \value{
 list of class \code{spheres} if \code{pl}>100 or empty list

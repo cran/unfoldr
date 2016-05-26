@@ -44,12 +44,12 @@ public:
   STGM::Spheres &refObjects()  { return m_spheres; }
   const STGM::Spheres &refObjects() const { return m_spheres; }
 
-  void IntersectWithPlane(IntersectorSpherePlaneVec &objects, STGM::CPlane &plane);
+  void IntersectWithPlane(IntersectorSpheres &objects, STGM::CPlane &plane);
 
-  template<typename F> void simSpheres(F f);
-  void simSpheresPerfect(double mx, double sdx);
+  template<typename F> void simSpheres(F f, const char *label);
+  void simSpheresPerfect(double mx, double sdx, const char *label);
 
-
+  STGM::CBox3 & box() { return m_box; }
 
 private:
   CBox3 m_box;

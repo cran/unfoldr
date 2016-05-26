@@ -2,18 +2,27 @@
 useDynLib(unfoldr, .registration = TRUE, .fixes = "C_")
 
 ## Exports
-export(simSphereSystem,getSphereSystem,setupSphereSystem)
+export(simSphereSystem,simCylinderSystem,getSphereSystem,setupSphereSystem)
 export(planarSection,binning1d,coefficientMatrixSpheres,em.saltykov,binning1d)
 
 export(simSpheroidSystem,getSpheroidSystem,setupSpheroidSystem)
 export(verticalSection,coefficientMatrixSpheroids,binning3d)
 export(em.spheroids,setbreaks,trivarHist,parameters3d,parameterEstimates)
-export(getMaxRadius, sectionProfiles, updateIntersections)
+export(getMaxRadius, sectionProfiles)
+export(updateIntersections)
+
+# imports
+importFrom("rgl","scale3d","rotate3d","polygon3d","translate3d","cylinder3d")
+importFrom("rgl","shapelist3d","clipplanes3d","axes3d","title3d")
+importFrom("rgl","shade3d","cube3d","par3d","quads3d","qmesh3d","rgl.cur")
 
 #S3 Methods
 S3method("unfold","prolate")
 S3method("unfold","oblate")
 S3method("unfold","numeric")
+
+# plotting
+export(cylinders3d, spheroids3d)
 
 export(unfold)
 importFrom("stats", "na.omit")

@@ -160,7 +160,10 @@ getSpheroidSystem <- function(S) {
 #' axis length \eqn{c=a*s} and shape parameter set to \eqn{s=1/(1+exp(-y))}. The parameter \eqn{\rho} defines 
 #' the degree of correlation between the semi-axes lengths which must be provided as part of the list of simulation 
 #' parameters \code{theta}. The method of exact simulation is tailored to the above described model. For a general 
-#' approach please see the given reference below. 
+#' approach please see the given reference below. Other (univariate)  major-axis lengths types include the beta,
+#' gamma, lognormal and uniform distribution where the shape factor which determines the minor-axis length either
+#' follows a beta distribution or is set to a constant. Despite the case of constant size simulations all other
+#' simulations are done as perfect simulations. 
 #' 
 #' The argument \code{pl} denotes the print level of output information during simulation.
 #' Currently, only \code{pl}=0 for no output and \code{pl}>100 for some additional info is implemented.
@@ -168,7 +171,7 @@ getSpheroidSystem <- function(S) {
 #' @param theta simulation parameters 
 #' @param lam   mean number of spheroids per unit volume
 #' @param size  name of random generating function for size distribution
-#' @param shape scalar shape parameter
+#' @param shape \code{shape="const"} (default) as a constant shape
 #' @param orientation name of random generating function for orientation distribution
 #' @param stype spheroid type
 #' @param rjoint name of joint random generating function
@@ -186,7 +189,7 @@ getSpheroidSystem <- function(S) {
 #'      \item{} {C. Lantu\eqn{\acute{\textrm{e}}}joul. Geostatistical simulation. Models and algorithms. 
 #' 					Springer, Berlin, 2002. Zbl 0990.86007}
 #' 	  }
-simSpheroidSystem <- function(theta, lam, size, shape="const",orientation="rbetaiso",
+simSpheroidSystem <- function(theta, lam, size="const", shape="const", orientation="rbetaiso",
 								stype=c("prolate","oblate"),rjoint=NULL,box=list(c(0,1)),
 								mu=c(0,1,0), pl=0, label="N")
 {
@@ -205,7 +208,8 @@ simSpheroidSystem <- function(theta, lam, size, shape="const",orientation="rbeta
   	else if(length(box)!=3)
 	  stop("Simulation box has wrong dimensions.")
     names(box) <- c("xrange","yrange","zrange")
-
+	
+	# spheroid type
 	stype <- match.arg(stype)
 	if(!is.null(rjoint)) {
 		if(!exists(rjoint, mode="function"))
@@ -225,10 +229,10 @@ simSpheroidSystem <- function(theta, lam, size, shape="const",orientation="rbeta
 		  stop("Argument names of return value list does not match required arguments.")
 
 		structure(.Call(C_EllipsoidSystem, 
-					list("lam"=lam,"rmulti"=theta),
-					list("stype"=stype,	"rdist"=rjoint,"box"=box,
-							"pl"=pl,"mu"=mu,"rho"=.GlobalEnv,"label"=label)),
-				   box = box)
+						list("lam"=lam,"rmulti"=theta),
+						list("stype"=stype,	"rdist"=rjoint,"box"=box,
+							 "pl"=pl,"mu"=mu,"rho"=.GlobalEnv,"label"=label)),
+				     box = box)
 
 	} else  {	
 		theta <- c("lam"=lam,theta)
@@ -239,13 +243,17 @@ simSpheroidSystem <- function(theta, lam, size, shape="const",orientation="rbeta
 			stop("Expected 'size','shape' and 'orientation' as lists of named arguments.")
 		it <- pmatch(orientation,c("runifdir","rbetaiso","rvMisesFisher"))
 		if(is.na(it) && !exists(orientation, mode="function"))
-			stop("Unknown random generating function for orientation distribution.")
-
+			stop("Unknown random generating function for orientation distribution.")		
+		sdistr <- c("const","rbeta","rgamma","runif")
+		its <- pmatch(shape,sdistr)
+		if(length(its)==0 || is.na(its))
+	     stop("Unknown shape distribution set. Only 'const', 'rbeta' supported.")
+		
 		if (missing(size))
 		  stop("Argument 'size' has to be given if 'rjoint' is 'NULL'!")
 		cond <- list("stype"=stype,
 				"rdist"=list("size"=size, "shape"=shape,"orientation"=orientation),
-				"box"=box, "pl"=pl,"mu"=mu,"rho"=.GlobalEnv,"label"=label)
+				"box"=box,"pl"=pl,"mu"=mu,"rho"=.GlobalEnv,"label"=label)
 
 		if(cond$rdist$size %in% c("const","rbinorm")) {
 			structure(.Call(C_EllipsoidSystem, theta, cond), box = box)
@@ -344,18 +352,23 @@ coefficientMatrixSpheroids <- function(breaks, stype=c("prolate","oblate"),
 #'
 #' Vertical section of spheroid system
 #'
-#' The function performs a vertical intersection of the spheroid system either
-#' parallel to yz-plane defined by the normal vector \code{n=c(1,0,0)} or
-#' xz-plane defined by \code{n=c(0,1,0)}.
+#' The function performs a vertical intersection defined by the normal vector
+#' \code{n=c(0,1,0)} which depends on the main orientation axis of the 
+#' coordinate system and has to be parallel to this.
 #'
-#' @param S list of spheroids, see \code{\link{simSpheroidSystem}}
-#' @param d distance of intersecting plane to the origin
-#' @param n normal vector
+#' @param S		 list of spheroids, see \code{\link{simSpheroidSystem}}
+#' @param d 	 distance of intersecting plane to the origin
+#' @param n 	 normal vector of intersting plane
+#' @param intern 	\code{intern=FALSE} (default) return all section profiles otherwise 
+#' 					only those which have their centers inside the intersection window 
 #' @return list of size, shape and angle of section profiles
-verticalSection <- function(S,d,n=c(1,0,0)) {
+verticalSection <- function(S,d,n=c(0,1,0),intern=FALSE) {
+	stopifnot(is.logical(intern))
+	if( sum(n)>1 )
+	  stop("Normal vector is like c(0,1,0). ")
 	if(!(class(S) %in% c("prolate","oblate")))
-		stop("Spheroids type does not match.")
-	ss <- .Call(C_IntersectSpheroidSystem,attr(S,"eptr"),n, d)
+	  stop("Spheroids type does not match.")
+	ss <- .Call(C_IntersectSpheroidSystem,attr(S,"eptr"),n, d, as.integer(intern))
 	.section2d(ss)
 }
 
@@ -363,6 +376,8 @@ verticalSection <- function(S,d,n=c(1,0,0)) {
 #' Plot particle system
 #' 
 #' Draw particle system as defined by \code{S}.
+#' 
+#' The function requires the package \code{rgl} to be installed.
 #' 
 #' @param S				a list of spheroids
 #' @param box			simulation box
@@ -372,10 +387,11 @@ verticalSection <- function(S,d,n=c(1,0,0)) {
 #' @param ...			further material properties passed to 3d plotting functions  
 spheroids3d <- function(S, box, draw.axes=FALSE, draw.box=TRUE, clipping=FALSE, ...)
 {
-	#if(!require(rgl))
-	#  stop("Please install 'rgl' package from CRAN repositories before running this function.")	
-	ellipsoid3d <- function(rx=1,ry=1,rz=1,n=50,ctr=c(0,0,0), qmesh=FALSE,trans = par3d("userMatrix"),...) {
-		if (missing(trans) && !rgl.cur())
+	if (!requireNamespace("rgl", quietly=TRUE))
+	 stop("Please install 'rgl' package from CRAN repositories before running this function.")
+			
+	ellipsoid3d <- function(rx=1,ry=1,rz=1,n=50,ctr=c(0,0,0), qmesh=FALSE,trans = rgl::par3d("userMatrix"),...) {
+		if (missing(trans) && !rgl::rgl.cur())
 			trans <- diag(4)
 		degvec <- seq(0,2*pi,length=n)
 		ecoord2 <- function(p) {
@@ -415,7 +431,7 @@ spheroids3d <- function(S, box, draw.axes=FALSE, draw.box=TRUE, clipping=FALSE, 
 	y <- box$yrange[2]
 	z <- box$zrange[2]
 	c3d.origin <- rgl::translate3d(rgl::scale3d(rgl::cube3d(col="darkgray", alpha=0.1),x/2,y/2,z/2),x/2,y/2,z/2)
-	shade3d(c3d.origin)
+	rgl::shade3d(c3d.origin)
 	
 	if(clipping) {
 		rgl::clipplanes3d(-1,0,0,x)
@@ -434,5 +450,5 @@ spheroids3d <- function(S, box, draw.axes=FALSE, draw.box=TRUE, clipping=FALSE, 
 	if(draw.box) {
 		rgl::axes3d(edges = "bbox",labels=TRUE,tick=FALSE,box=TRUE,nticks=0,
 				expand=1.0,xlen=0,xunit=0,ylen=0,yunit=0,zlen=0,zunit=0)
-	}
+	} 
 }

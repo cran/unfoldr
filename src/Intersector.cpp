@@ -352,5 +352,29 @@ namespace STGM
 
   }
 
+void digitizeCylinderIntersections(IntersectorCylinders &objects, int *w, int nPix, double delta) {
+    STGM::CDigitizer digitizer(w,nPix,nPix,delta);
+    int type = 0;
+
+    for(size_t k=0;k<objects.size();k++) {
+        type = objects[k].getType();
+        //Rprintf("element k %d, type %d \n",k,type);
+        if(type == CIRCLE_CAPS || type == CIRCLE) {
+            digitizer.start<STGM::CCircle3 &>(objects[k].getCircle1());
+        } else if(type == ELLIPSE ||
+                  type == ELLIPSE_ARC ||
+                  type == ELLIPSE_SEGMENT)
+        {
+            digitizer.start<STGM::CEllipse3 &>(objects[k].getEllipse());
+        }
+    }
+}
+
+void digitizeSpheroidIntersections(IntersectorSpheroids &objects, int *w, int nPix, double delta) {
+      STGM::CDigitizer digitizer(w,nPix,nPix,delta);
+      for(size_t k=0;k<objects.size();k++)
+          digitizer.start<STGM::CEllipse2 &>(objects[k].getEllipse());
+
+}
 
 } /* namespace STGM */

@@ -4,7 +4,7 @@
 \alias{simCylinderSystem}
 \title{Simulation of cylinder system}
 \usage{
-simCylinderSystem(theta, lam, size = "const", shape = c("const", "radius"),
+simCylinderSystem(theta, lam, size = "const", shape = "const",
   orientation = "rbetaiso", rjoint = NULL, box = list(c(0, 1)),
   mu = c(0, 1, 0), pl = 0, label = "N")
 }
@@ -17,8 +17,8 @@ simCylinderSystem(theta, lam, size = "const", shape = c("const", "radius"),
 a for specific size distribution}
 
 \item{shape}{either \code{shape="const"} as a constant portion of the axis length 
-   or \code{shape="radius"} as a const radius value. For a radius distribution
-use yout own joint distribution, see details.}
+   or \code{shape="rbeta"} as beta distributed shape factor. For a radius distribution
+use your own joint distribution, see details.}
 
 \item{orientation}{name of random generating function for orientation distribution}
 
@@ -52,13 +52,16 @@ only one element, i.e. \code{list(c(0,1)}, the same extent is used for the other
 If \code{rjoint="rmulti"} names a joint random generating function then argument \code{size} is ignored
 (see example file "sim.R").
 For the purpose of exact simulation setting \code{size} equal to \code{rbinorm} declares a bivarite 
-size-shape distribution which leads to a log normal distributed cylinder axis \code{u} and a scaled 
-radius length \code{r}. If \eqn{[X,Y]} follow a bivariate normal distribution with correlation parameter 
-\eqn{\rho} then \eqn{w=exp(x)} defines the sample cylinder axis length together with the scaled radius
-\eqn{r=w*s} and shape parameter set to \eqn{s=1/(1+exp(-y))}. The parameter \eqn{\rho} defines 
+size-shape distribution which leads to a log normal distributed cylinder axis (named \code{u}) length
+and a scaled radius \code{r}. If \eqn{[X,Y]} follow a bivariate normal distribution with correlation parameter 
+\eqn{\rho} then \eqn{h=exp(x)} defines the sample cylinder axis length together with the scaled radius
+\eqn{r=h*s} and shape parameter set to \eqn{s=1/(1+exp(-y))}. The parameter \eqn{\rho} defines 
 the degree of correlation between the cylinder axis length and cylinder radius which must be provided
 as part of the list of simulation parameters \code{theta}. The method of exact simulation is tailored
 to the above described model. For a general approach please see the given reference below.
+Other (univariate) cylinder axis lengths types include the beta, gamma, lognormal and uniform distribution 
+where the shape factor to get the radius either follows a beta distribution or is set to a constant. 
+Despite the case of constant size simulations all other simulations are done as perfect simulations. 
 The current implementation does not include routines for unfolding the joint 3d size-shape-orientation
 distribution of cylinders so far. However, this feature this might be provided in a later version.
 
@@ -67,23 +70,42 @@ Currently, only \code{pl}=0 for no output and \code{pl}>100 for some additional 
 }
 \examples{
 \dontrun{
-	
+
 lam <- 10
 box <- list("xrange"=c(0,3),"yrange"=c(0,3),"zrange"=c(0,9))
 
-# Spheroids of constant sizes
+# cylinders of constant length
 theta <- list("size"=list(0.25),
-			  "shape"=list("radius"=0.15),
+			  "shape"=list(0.5),
 			  "orientation"=list("kappa"=1))
 
-S <- simCylinderSystem(theta,lam,size="const",
+S <- simCylinderSystem(theta,lam,size="const", shape="const",
 						orientation="rbetaiso",box=box,pl=101)
+				
+# cylinders of constant length with
+# beta distributed radius	
+theta <- list("size"=list(0.35),
+              "shape"=list("a"=1,"b"=5),
+			  "orientation"=list("kappa"=1.5))				
+				
+S <- simCylinderSystem(theta,lam,size="const", shape="rbeta",
+				orientation="rbetaiso",box=box,pl=101)
+				
+# bivariate length-shape distribution
+# possibly correlated 
+param <- list("mx"=-1.0,"my"=-2.5, "sdx"=0.15,"sdy"=0.2,"rho"=0.0,"kappa"=1.0)
+theta <- list("size"=list("mx"=param$mx,"sdx"=param$sdx,
+						  "my"=param$my,"sdy"=param$sdy,
+						  "rho"=param$rho),
+			  "orientation"=list("kappa"=param$kappa),
+			  "shape"=list())
+		
+S <- simCylinderSystem(theta,lam,size="rbinorm",orientation="rbetaiso",box=box,pl=101)	
 
-#require("rgl")
-#open3d()
+## show cylinder system
 #cols <- c("#0000FF","#00FF00","#FF0000","#FF00FF","#FFFF00","#00FFFF")
 #cylinders3d(S, box, col=cols)
-  
+ 
 }
 }
 \references{

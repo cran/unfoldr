@@ -19,7 +19,8 @@ extern "C" {
  //
  SEXP EllipsoidSystem(SEXP R_param, SEXP R_cond);
  SEXP SimulateSpheroidsAndIntersect(SEXP R_param, SEXP R_cond);
- SEXP IntersectSpheroidSystem(SEXP ext, SEXP R_n, SEXP R_z);
+ SEXP IntersectSpheroidSystem(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_intern);
+ SEXP DigitizeEllipseIntersections(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_delta);
  SEXP GetEllipsoidSystem(SEXP ext);
  SEXP GetMaxRadius(SEXP ext);
  SEXP SetupSpheroidSystem(SEXP R_vname, SEXP R_env, SEXP R_param, SEXP R_cond);
@@ -40,8 +41,8 @@ class CEllipsoidSystem
  public:
   CSpheroid::spheroid_type m_stype;
 
-  CEllipsoidSystem(CBox3 &box, double lam, CVector3d &mu, CSpheroid::spheroid_type stype)
-    :  m_stype(stype), m_box(box), m_lam(lam), m_maxR(0), m_mu(mu),  num(0)
+  CEllipsoidSystem(CBox3 &box, double lam, CVector3d &mu, CSpheroid::spheroid_type stype, int perfect = 1)
+    :  m_stype(stype), m_box(box), m_lam(lam), m_maxR(0), m_mu(mu),  num(0), m_perfect(perfect)
   {
   };
 
@@ -49,6 +50,7 @@ class CEllipsoidSystem
 
 
   void simEllipsoidSys(R_Calldata d);
+  void simConstEllipsoidSys(R_Calldata d);
   void simSysJoint(R_Calldata d);
   void simBivariate(R_Calldata d);
 
@@ -61,8 +63,9 @@ class CEllipsoidSystem
   const STGM::CBox3 &box() const { return m_box; }
   STGM::CBox3 &box()  { return m_box; }
 
-  void IntersectWithBox(IntersectorSpheroids &objects);
-  void IntersectWithPlane(IntersectorSpheroids &objects, STGM::CPlane &plane);
+  void IntersectWithPlane(IntersectorSpheroids &objects, STGM::CPlane &plane, int intern);
+
+  Rboolean isPerfect() { return (m_perfect > 0 ? TRUE : FALSE); }
 
  private:
   CBox3 m_box;
@@ -72,6 +75,7 @@ class CEllipsoidSystem
 
   Spheroids m_spheroids;
   size_t num;
+  int m_perfect;
 };
 
 

@@ -4,7 +4,7 @@
 \alias{simSpheroidSystem}
 \title{Simulation of spheroid system}
 \usage{
-simSpheroidSystem(theta, lam, size, shape = "const",
+simSpheroidSystem(theta, lam, size = "const", shape = "const",
   orientation = "rbetaiso", stype = c("prolate", "oblate"), rjoint = NULL,
   box = list(c(0, 1)), mu = c(0, 1, 0), pl = 0, label = "N")
 }
@@ -15,7 +15,7 @@ simSpheroidSystem(theta, lam, size, shape = "const",
 
 \item{size}{name of random generating function for size distribution}
 
-\item{shape}{scalar shape parameter}
+\item{shape}{\code{shape="const"} (default) as a constant shape}
 
 \item{orientation}{name of random generating function for orientation distribution}
 
@@ -57,13 +57,17 @@ semi-minor axis length \code{c}. If \eqn{[X,Y]} follow a bivariate normal distri
 axis length \eqn{c=a*s} and shape parameter set to \eqn{s=1/(1+exp(-y))}. The parameter \eqn{\rho} defines 
 the degree of correlation between the semi-axes lengths which must be provided as part of the list of simulation 
 parameters \code{theta}. The method of exact simulation is tailored to the above described model. For a general 
-approach please see the given reference below.
+approach please see the given reference below. Other (univariate)  major-axis lengths types include the beta,
+gamma, lognormal and uniform distribution where the shape factor which determines the minor-axis length either
+follows a beta distribution or is set to a constant. Despite the case of constant size simulations all other
+simulations are done as perfect simulations.
 
 The argument \code{pl} denotes the print level of output information during simulation.
 Currently, only \code{pl}=0 for no output and \code{pl}>100 for some additional info is implemented.
 }
 \examples{
 \dontrun{
+	
 # directional distribution
 rbetaiso <- function(kappa) {
    phi <- runif(1,0,1)*2*pi
@@ -72,7 +76,8 @@ rbetaiso <- function(kappa) {
    list("u"=c(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta)),
 		   "theta"=theta,"phi"=phi)					
 }
-   
+
+# no perfect simualtion here for 'rmulti'
 # multivariate size distribution and orientation distribution 
 rmulti <- function(m,s,kappa) {	
    dir <- rbetaiso(kappa)
@@ -89,25 +94,45 @@ rmulti <- function(m,s,kappa) {
 }
 
 set.seed(1234)
-lam <- 1000
+lam <- 100
+box <- list("xrange"=c(0,5),"yrange"=c(0,5),"zrange"=c(0,5))
+
+# joint (user defined random generating function) simualtion
 sigma <- matrix(c(0.1,0.1,0.1,0.25), ncol=2)
 theta <- list("m"=c(-3.0,-2.0),"s"=sigma,"kappa"=0.5)
-S <- simSpheroidSystem(theta,lam,rjoint="rmulti",box=list(c(0,5)),pl=101)
+S <- simSpheroidSystem(theta,lam,rjoint="rmulti",box=box,pl=101)
 
 # Spheroids with log normal distributed semi-major axis length
 # distribution and independent orientation distribution
 theta <- list("size"=list("meanlog"=-2.5,"sdlog"=0.5),
               "shape"=list("s"=0.5),
               "orientation"=list("kappa"=1.5))
-S <- simSpheroidSystem(theta,lam,size="rlnorm",orientation="rbetaiso",
-                       box=list(c(0,5)),pl=101)
+  
+S <- simSpheroidSystem(theta,lam,size="rlnorm",shape="const",orientation="rbetaiso",
+		box=box,pl=101)
+			   
+# log normal, rbeta shape
+theta <- list("size"=list("meanlog"=-2.5,"sdlog"=0.5),
+			  "shape"=list("a"=1,"b"=2),
+		      "orientation"=list("kappa"=1.5))
 
-# Spheroids of constant sizes
+S <- simSpheroidSystem(theta,lam,size="rlnorm",shape="rbeta",orientation="rbetaiso",
+		box=box,pl=101)
+
+# Spheroids of constant sizes, const shape
 theta <- list("size"=list(0.25),
               "shape"=list("s"=0.5),
               "orientation"=list("kappa"=1))
-S <- simSpheroidSystem(theta,lam,size="const",orientation="rbetaiso",
-                       box=list(c(0,5)),pl=101)
+S <- simSpheroidSystem(theta,lam,size="const",shape="const",orientation="rbetaiso",
+                       box=box,pl=101)
+
+# constant size, rbeta shape			   
+theta <- list("size"=list(0.25),
+			  "shape"=list("a"=1,"b"=2),
+			  "orientation"=list("kappa"=1.5))	  
+			   
+S <- simSpheroidSystem(theta,lam,size="const",shape="rbeta",orientation="rbetaiso",
+					   box=box,pl=101)			   
 			   
 			   
 # Spheroids exact simulation
@@ -120,9 +145,15 @@ theta <- list("size"=list("mx"=param$mx,
 			  "orientation"=list("kappa"=param$kappa),
 			  "shape"=list())
 
-S <- simSpheroidSystem(theta,lam,size="rbinorm",orientation="rbetaiso",box=list(c(0,5)),pl=101)	
+S <- simSpheroidSystem(theta,lam,size="rbinorm",orientation="rbetaiso",box=box,pl=101)	
+
+
+## show spheroid system 
+#cols <- c("#0000FF","#00FF00","#FF0000","#FF00FF","#FFFF00","#00FFFF")
+#spheroids3d(S[1:500],box=box, col=cols)
 
 }
+
 }
 \references{
 \itemize{

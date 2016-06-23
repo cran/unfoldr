@@ -291,12 +291,11 @@ namespace STGM {
     return r;
   }
 
-  double CSpheroid::spheroidDistanceAsCylinder(CSpheroid &sp, double &alpha) const {
-      STGM::CVector3d w(0,0,0), z(0,0,1);
+  double CSpheroid::spheroidDistanceAsCylinder(CSpheroid &sp) const {
+      STGM::CVector3d w(0,0,0);
       double d=0, lh1=1.0e-7,lh2=1.0e-7;
 
       DISTANCE_VEC(m_center.ptr(),sp.center().ptr(),w.ptr());
-      alpha = asin(w.dot(z)/w.Length());
 
       if(m_crack && sp.m_crack)  {  // E_i, E_j
          lh1 = m_b-m_a;
@@ -350,15 +349,14 @@ namespace STGM {
    }
 
 
-   double CCylinder::cylinderDistance(CCylinder &sp, double &alpha) const {
+   double CCylinder::cylinderDistance(CCylinder &sp) const {
+       double d=0, lh1=.5*m_h, lh2=.5*sp.m_h;
+
        STGM::CVector3d w(0,0,0), z(0,0,1);
        DISTANCE_VEC(m_center.ptr(),sp.center().ptr(),w.ptr());
 
-       double d = 0, lh1 = .5*m_h, lh2 = .5*sp.m_h;
        sdm(w.ptr(),m_u.ptr(),sp.u().ptr(),&lh1,&lh2,&d);
-
-       alpha = asin( w.dot(z)/w.Length() );
-       return MAX(sqrt(d)-m_r-sp.m_r,.0);
+       return MAX(sqrt(d)-m_r-sp.m_r,0.0);
    }
 
    CEllipse2 CCylinder::crackProjection() const {
@@ -388,8 +386,9 @@ namespace STGM {
 
 
    double CCylinder::delamProjection(PointVector2d &P, int npoints) {
-      int np = floor(MAX(8,npoints-4)/2);
-      CVector3d n(0,0,1), u(cross(m_u,n));
+      int np = std::floor(MAX(8.0,(double)npoints-4.0)/2.0);
+      CVector3d n(0,0,1),
+                u(cross(m_u,n));
 
       /// projected rectangle points
       u.Normalize();
@@ -403,21 +402,22 @@ namespace STGM {
       Vec3Op(A,=,P[0],-,P[2]);
       Vec3Op(B,=,P[0],-,P[1]);
 
-      CCircle3 c1(m_origin0,m_r);
+      CCircle3 c1(m_origin0,m_r,n);
       c1.samplePoints(P,np);
-      CCircle3 c2(m_origin1,m_r);
+      CCircle3 c2(m_origin1,m_r,n);
       c2.samplePoints(P,np);
 
       /// projection area: 2*area of the half circles times
       /// the area of the rectangle in between the closing caps
       return c1.area() + A.Length()*B.Length();
+
    }
 
    double CCylinder::projectedPointsWithArea(PointVector2d &P, int npoints) {
      /// delam, full projection
      if(m_crack) {
        /// for spheres as spherocylinders
-       if(!strcmp(m_label,"F")) {
+       if(!std::strcmp(m_label,"F")) {
            CCircle3 circle(m_center,m_r);
            circle.samplePoints(P,npoints);
            return M_PI*SQR(m_r);

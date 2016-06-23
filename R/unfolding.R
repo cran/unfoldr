@@ -230,6 +230,7 @@ parameterEstimates <- function(H,breaks) {
 #'
 #' Plot trivariate histogram of joint size-shape-orientation distribution
 #'
+#' The function requires the package \code{rgl} to be installed.
 #' The (estimated spatial) joint size-shape-orientation distribution is plotted
 #' in a box with corresponding axes shown. The axes intersect in the first class number.
 #' The ball volumes visualize the relative frequencies of count data for each class which 
@@ -242,6 +243,7 @@ parameterEstimates <- function(H,breaks) {
 #'  @param col 		vector of color values repeatedly used
 #'  @param ... 		optional graphic arguments passed to function \code{\link[rgl]{spheres3d}}
 trivarHist <- function(A, main = paste("Trivariate Histogram"),scale = 0.5,col, ...) {	
+  if (requireNamespace("rgl", quietly=TRUE)) {
 	N <- sum(A)
 	pos <- do.call(rbind,lapply(seq(1:dim(A)[1]),
 					function(i) {
@@ -260,4 +262,7 @@ trivarHist <- function(A, main = paste("Trivariate Histogram"),scale = 0.5,col, 
 	rgl::spheres3d(pos,radius=sz,col=unlist(ncols),...)
 	rgl::axes3d(c('x','y','z'), pos=c(1,1,1), tick=FALSE)
 	rgl::title3d(main,'',"orientation","shape","size")
+ } else {
+	 stop("Please install 'rgl' package from CRAN repositories before running this function.")
+ } 
 }

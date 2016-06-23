@@ -9,6 +9,7 @@
 #define BITMAP_RGB "P6"
 
 #include "Utils.h"
+#include <cstring>
 #include <R_ext/Lapack.h>
 
 /* show arguments of .External interface */
@@ -91,45 +92,58 @@ R_Calldata getRCallParam(SEXP R_param, SEXP R_cond) {
   PROTECT(d->label = getListElement( R_cond, "label"));  ++nprotect;
 
   if(TYPEOF(d->fname)!=VECSXP) {
-      PROTECT(d->args  = getListElement( R_param,"rmulti")); ++nprotect;
-      PROTECT(d->rho   = getListElement( R_cond, "rho"  ));  ++nprotect;
-      PROTECT(d->call  = getCall(d->fname,d->args,d->rho));  ++nprotect;
+    PROTECT(d->args  = getListElement( R_param,"rmulti")); ++nprotect;
+    PROTECT(d->rho   = getListElement( R_cond, "rho"  ));  ++nprotect;
+    PROTECT(d->call  = getCall(d->fname,d->args,d->rho));  ++nprotect;
   } else {
     PROTECT(d->call = allocVector(VECSXP,3)); ++nprotect;
 
-    /* fname, args are lists of [size, shape, orientation] */
-    PROTECT(d->rho   = getListElement( R_cond, "rho"  )); ++nprotect;
-    PROTECT(d->args = allocVector(VECSXP,3)); ++nprotect;
+    /* fname, args are lists of [size, shape, orientation], args are parameters for each */
+    PROTECT(d->rho   = getListElement( R_cond, "rho"  ));   ++nprotect;
+    PROTECT(d->args = allocVector(VECSXP,3));               ++nprotect;
+
     SET_VECTOR_ELT(d->args,0, getListElement( R_param,"size"));
     SET_VECTOR_ELT(d->args,1, getListElement( R_param,"shape"));
     SET_VECTOR_ELT(d->args,2, getListElement( R_param,"orientation"));
 
-
     // size distributions
     SET_VECTOR_ELT(d->call,0,R_NilValue);
     const char *ftype_size = GET_NAME(d,0);
-    if ( !strcmp( ftype_size, "rlnorm") ||
-         !strcmp( ftype_size, "rbinorm") ||
-         !strcmp( ftype_size, "rbeta" ) ||
-         !strcmp( ftype_size, "rgamma") ||
-         !strcmp( ftype_size, "runif" ) ||
-         !strcmp( ftype_size, "const" ))
+    if ( !std::strcmp( ftype_size, "rlnorm") ||
+         !std::strcmp( ftype_size, "rbinorm") ||
+         !std::strcmp( ftype_size, "rbeta" ) ||
+         !std::strcmp( ftype_size, "rgamma") ||
+         !std::strcmp( ftype_size, "runif" ) ||
+         !std::strcmp( ftype_size, "const" ))
     {;
     } else {
+      // user defined distribution as R call
+      error(_("User defined distributions are not yet supported."));
       SET_VECTOR_ELT(d->call,0,GET_CALL(d,0));
     }
 
-    // shape: here no distributional forms
+    // shape (distributions)
     SET_VECTOR_ELT(d->call,1,R_NilValue);
+    const char *ftype_shape = GET_NAME(d,1);
+    if ( !std::strcmp( ftype_shape, "rbeta") ||
+         !std::strcmp( ftype_shape, "const" ))
+    {;
+    } else {
+        // user defined distribution as R call
+        error(_("User defined distributions are not yet supported."));
+        SET_VECTOR_ELT(d->call,1,GET_CALL(d,1));
+    }
 
     // orientation distributions
     SET_VECTOR_ELT(d->call,2,R_NilValue);
     const char *ftype_dir = GET_NAME(d,2);
-    if ( !strcmp( ftype_dir, "runifdir") ||
-         !strcmp( ftype_dir, "rbetaiso" ) ||
-         !strcmp( ftype_dir, "rvMisesFisher"))
+    if ( !std::strcmp( ftype_dir, "runifdir") ||
+         !std::strcmp( ftype_dir, "rbetaiso" ) ||
+         !std::strcmp( ftype_dir, "rvMisesFisher"))
     {;
     } else {
+       // user defined distribution as R call
+       error(_("User defined distributions are not yet supported."));
        SET_VECTOR_ELT(d->call,2,GET_CALL(d,2));
     }
 
@@ -213,7 +227,7 @@ SEXP getListElement (SEXP list, const char *str)
      SEXP names = getAttrib(list, R_NamesSymbol);
 
      for (int i = 0; i < length(list); i++)
-         if(strcmp(CHAR(STRING_ELT(names, i)), str) == 0) {
+         if(std::strcmp(CHAR(STRING_ELT(names, i)), str) == 0) {
              elmt = VECTOR_ELT(list, i);
              break;
          }

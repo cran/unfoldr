@@ -8,6 +8,8 @@ cylinders3d(S, box, draw.axes = FALSE, draw.box = TRUE, clipping = FALSE,
   ...)
 }
 \arguments{
+\item{S}{a list of cylinders}
+
 \item{box}{simulation box}
 
 \item{draw.axes}{logical: if true, draw the axes}
@@ -17,10 +19,11 @@ cylinders3d(S, box, draw.axes = FALSE, draw.box = TRUE, clipping = FALSE,
 \item{clipping}{logical: if true clip to the bounding box}
 
 \item{...}{further material properties passed to 3d plotting functions}
-
-\item{S}{a list of cylinders}
 }
 \description{
 Draw 3d spherocylinders
+}
+\details{
+The function requires the package \code{rgl} to be installed.
 }
 

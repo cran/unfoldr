@@ -24,13 +24,16 @@
 #' If \code{rjoint="rmulti"} names a joint random generating function then argument \code{size} is ignored
 #' (see example file "sim.R").
 #' For the purpose of exact simulation setting \code{size} equal to \code{rbinorm} declares a bivarite 
-#' size-shape distribution which leads to a log normal distributed cylinder axis \code{u} and a scaled 
-#' radius length \code{r}. If \eqn{[X,Y]} follow a bivariate normal distribution with correlation parameter 
-#' \eqn{\rho} then \eqn{w=exp(x)} defines the sample cylinder axis length together with the scaled radius
-#' \eqn{r=w*s} and shape parameter set to \eqn{s=1/(1+exp(-y))}. The parameter \eqn{\rho} defines 
+#' size-shape distribution which leads to a log normal distributed cylinder axis (named \code{u}) length
+#' and a scaled radius \code{r}. If \eqn{[X,Y]} follow a bivariate normal distribution with correlation parameter 
+#' \eqn{\rho} then \eqn{h=exp(x)} defines the sample cylinder axis length together with the scaled radius
+#' \eqn{r=h*s} and shape parameter set to \eqn{s=1/(1+exp(-y))}. The parameter \eqn{\rho} defines 
 #' the degree of correlation between the cylinder axis length and cylinder radius which must be provided
 #' as part of the list of simulation parameters \code{theta}. The method of exact simulation is tailored
 #' to the above described model. For a general approach please see the given reference below.
+#' Other (univariate) cylinder axis lengths types include the beta, gamma, lognormal and uniform distribution 
+#' where the shape factor to get the radius either follows a beta distribution or is set to a constant. 
+#' Despite the case of constant size simulations all other simulations are done as perfect simulations. 
 #' The current implementation does not include routines for unfolding the joint 3d size-shape-orientation
 #' distribution of cylinders so far. However, this feature this might be provided in a later version. 
 #' 
@@ -42,8 +45,8 @@
 #' @param size  		\code{size="const"} (default) or name of random generating function
 #' 						a for specific size distribution
 #' @param shape 		either \code{shape="const"} as a constant portion of the axis length 
-#' 					    or \code{shape="radius"} as a const radius value. For a radius distribution
-#'	 					use yout own joint distribution, see details.					  
+#' 					    or \code{shape="rbeta"} as beta distributed shape factor. For a radius distribution
+#'	 					use your own joint distribution, see details.					  
 #' @param orientation   name of random generating function for orientation distribution
 #' @param rjoint 		name of joint random generating function
 #' @param box 			simulation box
@@ -60,9 +63,8 @@
 #'      \item{} {C. Lantu\eqn{\acute{\textrm{e}}}joul. Geostatistical simulation. Models and algorithms. 
 #' 					Springer, Berlin, 2002. Zbl 0990.86007}
 #' 	  }
-simCylinderSystem <- function(theta, lam, size="const",
-					   shape=c("const","radius"),orientation="rbetaiso",
-						  rjoint=NULL, box=list(c(0,1)),mu=c(0,1,0), pl=0, label="N")
+simCylinderSystem <- function(theta, lam, size="const", shape="const",
+						orientation="rbetaiso", rjoint=NULL, box=list(c(0,1)),mu=c(0,1,0), pl=0, label="N")
 {		
 	if(!is.list(theta))
 		stop("Expected 'theta' as list of named  arguments.")
@@ -76,10 +78,7 @@ simCylinderSystem <- function(theta, lam, size="const",
 	else if(length(box)!=3)
 		stop("Simulation box has wrong dimensions.")
 	names(box) <- c("xrange","yrange","zrange")
-	
-	# set shape/radius
-	shape <- match.arg(shape)
-	
+		
 	if(!is.null(rjoint)) {
 		if(!exists(rjoint, mode="function"))
 			stop("Unknown multivarirate random generating function.")
@@ -115,7 +114,12 @@ simCylinderSystem <- function(theta, lam, size="const",
 			stop("Unknown random generating function for orientation distribution.")
 		
 		if (missing(size))
-			stop("Argument 'size' has to be given if 'rjoint' is 'NULL'!")
+		 stop("Argument 'size' has to be given if 'rjoint' is 'NULL'!")
+	 	sdistr <- c("const","rbeta","rgamma","runif")
+	 	its <- pmatch(shape,sdistr)
+	 	if(length(its)==0 || is.na(its))
+		 stop("Unknown shape distribution set. Only 'const', 'rbeta' supported.")
+	 
 		cond <- list("rdist"=list("size"=size, "shape"=shape,"orientation"=orientation),
 					 "box"=box, "pl"=pl,"mu"=mu,"rho"=.GlobalEnv,"label"=label)
 		
@@ -145,6 +149,8 @@ simCylinderSystem <- function(theta, lam, size="const",
 #' 
 #' Draw 3d spherocylinders
 #' 
+#' The function requires the package \code{rgl} to be installed.
+#' 
 #' @param S				a list of cylinders
 #' @param box			simulation box
 #' @param draw.axes		logical: if true, draw the axes
@@ -152,11 +158,13 @@ simCylinderSystem <- function(theta, lam, size="const",
 #' @param clipping 		logical: if true clip to the bounding box
 #' @param ...			further material properties passed to 3d plotting functions
 cylinders3d <- function(S, box, draw.axes=FALSE, draw.box=TRUE, clipping=FALSE,...) {
-		
-	cylinder <- function(m, radius=1, h=1, rotM=diag(3), u=c(0,0,1)) {
+    if (!requireNamespace("rgl", quietly=TRUE))
+	 stop("Please install 'rgl' package from CRAN repositories before running this function.")
+
+    cylinder <- function(m, radius=1, h=1, rotM=diag(3), u=c(0,0,1)) {
 		cyl <- rgl::cylinder3d(rbind(c(0,0,0),c(0,0,1)), radius=radius,
 					  e1=cbind(0, 0, 1), e2=cbind(1, 0, 0), sides=25,closed=-2	)		
-		result <-rgl:: scale3d(cyl,1,1,h)
+		result <-rgl::scale3d(cyl,1,1,h)
 		result <- rgl::rotate3d(result,matrix=rotM)		
 		## translate to midpoint of cylinder, center of mass
 		m <- m-0.5*h*u
@@ -170,22 +178,21 @@ cylinders3d <- function(S, box, draw.axes=FALSE, draw.box=TRUE, clipping=FALSE,.
 	cyls <- lapply(S[ok], function(x) { cylinder(x$center, x$r, x$length, x$rotM, x$u) })
 	rgl::shapelist3d(cyls,...)	
 		
-	Xc <- do.call(rbind,lapply(S[ok],function(x) rbind(x$origin0,x$origin1)))	
-	
 	if("col" %in% names(args)) {
 		cols <- rep(rep(args$col,length.out=length(S)),each=2)
 		args$col <- NULL
 	} else cols <- "black"
-		 
-	rgl::spheres3d(Xc,radius=sapply(S[ok],"[[","r"),col=cols,unlist(args))	
+	
 	# spheres
+	Xc <- do.call(rbind,lapply(S[ok],function(x) rbind( c(x$origin0,x$r),c(x$origin1,x$r))))	
+	rgl::spheres3d(Xc,radius=Xc[,4],col=cols,unlist(args))	
 	if(!all(ok)) {
-		Xc <- do.call(rbind,lapply(S[!ok],function(x) rbind(x$center)))	
-		rgl::spheres3d(Xc,radius=sapply(S[!ok],"[[","r"),col="darkgray",unlist(args))
+		Xc <- do.call(rbind,lapply(S[!ok],function(x) rbind(c(x$center,x$r))))	
+		rgl::spheres3d(Xc,radius=Xc[,4],col="darkgray",unlist(args))
 	}
 	
 	x <- box$xrange[2];	y <- box$yrange[2];	z <- box$zrange[2]
-	c3d.origin <- rgl::translate3d(scale3d(cube3d(col="darkgray", alpha=0.1),x/2,y/2,z/2),x/2,y/2,z/2)
+	c3d.origin <- rgl::translate3d(rgl::scale3d(rgl::cube3d(col="darkgray", alpha=0.1),x/2,y/2,z/2),x/2,y/2,z/2)
 	rgl::shade3d(c3d.origin)
 	
 	if(clipping) {
@@ -204,8 +211,7 @@ cylinders3d <- function(S, box, draw.axes=FALSE, draw.box=TRUE, clipping=FALSE,.
 	if(draw.box) {
 		rgl::axes3d(edges = "bbox",labels=TRUE,tick=FALSE,box=TRUE,nticks=0,
 				expand=1.0,xlen=0,xunit=0,ylen=0,yunit=0,zlen=0,zunit=0)
-	}	
-	
+	} 
 }
 
 

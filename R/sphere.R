@@ -61,12 +61,13 @@ setupSphereSystem <- function(S,pl=0) {
 #' the parameter list \code{theta}.
 #'
 #' The simulation box is of type list. The vector arguments correspond to the lower and upper points in x,y
-#' and z direction. If \code{box} has only one element, i.e. \code{list(c(0,1)}, the same extent is used for the other dimensions.
-#' The argument \code{pl} denotes the print level of information during simulation. Currently, only
-#' \code{pl=0} for no output and \code{pl}>100 is implemented. Argument \code{cond$rdist} is of type string
-#' naming the (user defined) radii random generating function.
+#' and z direction. If \code{box} has only one element, i.e. \code{list(c(0,1)}, the same extent is used for
+#' the other dimensions. The argument \code{pl} denotes the print level of information during simulation.
+#' Currently, only \code{pl=0} for no output and \code{pl}>100 is implemented. Argument \code{cond$rdist} is of
+#' type string naming the (user defined) radii random generating function.
 #' Setting \code{size} equal to 'rlnorm' generates log normally distributed radii for a stationary Poisson 
-#' ball system according to a general approach of exact simulation (see reference below). 
+#' ball system according to a general approach of perfect simulation (see reference below). Other distributions 
+#' currently available are the beta, gamma and uniform distribution.
 #' 
 #' @param theta  simulation parameters
 #' @param lam    mean number of spheres per unit volume
@@ -129,15 +130,18 @@ simSphereSystem <- function(theta,lam,rdist,box=list(c(0,1)), pl=0, label="N") {
 #' the function returns the section radii from intersecting all spheres
 #' stored in \code{S}.
 #'
-#' @param S list of spheres, see \code{\link{simSphereSystem}}
-#' @param d distance of the intersecting xy-plane to the origin
+#' @param S 		list of spheres, see \code{\link{simSphereSystem}}
+#' @param d 		distance of the intersecting xy-plane to the origin
+#' @param intern 	\code{intern=FALSE} (default) return all sections otherwise 
+#' 					only those which have their centers inside the intersection window 
 #'
 #' @return  vector of circle radii
-planarSection <- function(S,d) {
+planarSection <- function(S,d,intern=FALSE) {
+	stopifnot(is.logical(intern))
 	if(!is.list(S))
 		stop("Expected spheres as list argument.")
-	unlist(lapply(.Call(C_IntersectSphereSystem,attr(S,"eptr"),c(0,0,1),d),
-		function(x) 2.0*x$r))
+	sapply(.Call(C_IntersectSphereSystem,attr(S,"eptr"),c(0,0,1),d,as.integer(intern)),
+		function(x) 2.0*x$r)
 }
 
 #' Binning numeric values

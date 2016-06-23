@@ -23,4 +23,7 @@ spheroids3d(S, box, draw.axes = FALSE, draw.box = TRUE, clipping = FALSE,
 \description{
 Draw particle system as defined by \code{S}.
 }
+\details{
+The function requires the package \code{rgl} to be installed.
+}
 

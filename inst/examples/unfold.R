@@ -18,8 +18,7 @@ sp <- verticalSection(S,2.5)
 ret <- unfold(sp,c(15,12,10),kap=1.25)
 cat("Intensities: ", sum(ret$N_V)/25, "vs.",lam,"\n")
 
-## uncomment for plot of joint 3d histogram
-# require("rgl")
+## plot 3d trivariate histogram of joint distribution
 # cols <- c("#0000FF","#00FF00","#FF0000","#FF00FF","#FFFF00","#00FFFF")
 # trivarHist(ret$N_V,col=cols,scale=0.9)
 

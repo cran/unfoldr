@@ -8,10 +8,6 @@
 #ifndef GEOMETRIC_PRIMITIVES_H_
 #define GEOMETRIC_PRIMITIVES_H_
 
-#include <vector>
-#include <algorithm>
-
-#include "Rmath.h"
 #include "Vector.h"
 
 extern "C" void sdm(const double *r12,  const double *u1, const double *u2, const  double *lh1p, const double *lh2p, double *d);
@@ -336,15 +332,13 @@ namespace STGM {
         CCircle3 project(CVector3d &n) { return CCircle3(m_center,m_r,n);  }
         inline double projectionArea() { return M_PI*SQR(m_r); }
 
-        double sphereDistance(CSphere &s, double &alpha) const {
-          CVector3d d(m_center), z(0,0,1);
+        double sphereDistance(CSphere &s) const {
+          CVector3d d(m_center);
           d -= s.m_center;
-          double len = d.Length();
-          alpha = asin(d.dot(z)/len);
-          return len;
+          return d.Length();
         }
 
-        inline double distance(CSphere &s, double &alpha) {  return sphereDistance(s, alpha); }
+        inline double distance(CSphere &s) {  return sphereDistance(s); }
 
         /**
           * @brief Sample points and return area of projection
@@ -829,7 +823,7 @@ namespace STGM {
        STGM::CPoint2d p1(PointOnEllipse(m_psi[idx]));
        STGM::CPoint2d p2(PointOnEllipse(2*M_PI-m_psi[idx]));
 
-       return (int)(sign( m_minorAxis[m_j]*(p[0]-p2[0])-m_minorAxis[m_i]*(p[1]-p2[1])) );
+       return SGN( m_minorAxis[m_j]*(p[0]-p2[0])-m_minorAxis[m_i]*(p[1]-p2[1]));
      }
 
      /**
@@ -845,7 +839,7 @@ namespace STGM {
        double t = 0;
        /// or PI as a point on the ellipse to determine the the cut off side
        if(m_side<0) t = M_PI;
-       m_side0 = (int)(sign(whichSide(PointOnEllipse(t),0)));
+       m_side0 = whichSide(PointOnEllipse(t),0);
      }
 
      /**
@@ -920,7 +914,7 @@ namespace STGM {
         */
        const CMatrix3d &rotationMatrix() const { return m_R; }
 
-       double distance(CSpheroid &s, double &alpha) {  return spheroidDistanceAsCylinder(s,alpha);  }
+       double distance(CSpheroid &s) {  return spheroidDistanceAsCylinder(s);  }
 
        /**
         * @brief Approximate (euclidian) distance of spheroids
@@ -929,7 +923,7 @@ namespace STGM {
         * @param sp  spheroids
         * @return
         */
-       double spheroidDistanceAsCylinder(CSpheroid &sp, double &alpha) const;
+       double spheroidDistanceAsCylinder(CSpheroid &sp) const;
 
        /**
         *
@@ -1040,8 +1034,8 @@ namespace STGM {
         CVector3d & center() { return m_center; }
         const CVector3d & center() const { return m_center; }
 
-        double cylinderDistance(CCylinder &cyl, double &alpha) const;
-        inline double distance(CCylinder &s, double &alpha) {  return cylinderDistance(s,alpha); }
+        double cylinderDistance(CCylinder &cyl) const;
+        inline double distance(CCylinder &s) {  return cylinderDistance(s); }
 
         /**
         * @return Origin0 of the Cylinder.

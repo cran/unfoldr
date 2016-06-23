@@ -11,11 +11,6 @@ export(em.spheroids,setbreaks,trivarHist,parameters3d,parameterEstimates)
 export(getMaxRadius, sectionProfiles)
 export(updateIntersections)
 
-# imports
-importFrom("rgl","scale3d","rotate3d","polygon3d","translate3d","cylinder3d")
-importFrom("rgl","shapelist3d","clipplanes3d","axes3d","title3d")
-importFrom("rgl","shade3d","cube3d","par3d","quads3d","qmesh3d","rgl.cur")
-
 #S3 Methods
 S3method("unfold","prolate")
 S3method("unfold","oblate")

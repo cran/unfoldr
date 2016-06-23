@@ -5,7 +5,6 @@
  *      Author: franke
  */
 
-#include "unfold.h"
 #include "SimSphere.h"
 
 //static locals
@@ -31,11 +30,11 @@ R_Calldata buildRCallSpheres(SEXP R_param,SEXP R_cond) {
 
   /* radii distribution */
   const char *ftype = CHAR(STRING_ELT(d->fname, 0));
-  if ( !strcmp( ftype, "rlnorm") ||
-       !strcmp( ftype, "rbeta" ) ||
-       !strcmp( ftype, "rgamma") ||
-       !strcmp( ftype, "runif" ) ||
-       !strcmp( ftype, "const" ))
+  if ( !std::strcmp( ftype, "rlnorm") ||
+       !std::strcmp( ftype, "rbeta" ) ||
+       !std::strcmp( ftype, "rgamma") ||
+       !std::strcmp( ftype, "runif" ) ||
+       !std::strcmp( ftype, "const" ))
   {;
   } else {
     PROTECT(d->call = getCall(d->fname,d->args,d->rho)); ++nprotect;
@@ -45,7 +44,7 @@ R_Calldata buildRCallSpheres(SEXP R_param,SEXP R_cond) {
 }
 
 void _free_spheres(STGM::CBoolSphereSystem *sp){
-  if(NULL==sp) return;
+  if(!sp) return;
   sp->~CBoolSphereSystem();
   Free(sp);
 }
@@ -170,13 +169,13 @@ void STGM::CBoolSphereSystem::simSphereSys(R_Calldata d)
        const char *fname = CHAR(STRING_ELT(d->fname,0));
 
        /* ACHTUNG: 'const' function braucht 2 Argumente */
-       if(strcmp(fname, "const" ))
+       if(std::strcmp(fname, "const" ))
          p2=REAL_ARG_LIST(d->args,1);
 
        // set spheroid label
        const char *label = translateChar(asChar(d->label));
 
-       if(!strcmp(fname, "rlnorm")) {
+       if(!std::strcmp(fname, "rlnorm")) {
            simSpheresPerfect(p1,p2,label);
        } else {
            R_rndGen_t<rdist2_t> rrandom(p1,p2,fname);
@@ -276,7 +275,11 @@ SEXP SimulateSpheresAndIntersect(SEXP R_param, SEXP R_cond) {
   STGM::CPlane plane(STGM::CVector3d(0,0,1), dz);
 
   STGM::IntersectorSpheres objects;
-  sp->IntersectWithPlane(objects,plane);
+  int intern = 0;
+  if(!isNull(getListElement(R_cond,"intern")))
+    intern = asInteger(AS_INTEGER(getListElement(R_cond,"intern")));
+  sp->IntersectWithPlane(objects,plane,intern);
+
   //Rprintf("objects: %d , pl: %d, dz: %f \n",objects.size(),PL,dz);
 
   SEXP R_circles = R_NilValue;
@@ -295,7 +298,7 @@ SEXP SimulateSpheresAndIntersect(SEXP R_param, SEXP R_cond) {
   return R_circles;
 }
 
-SEXP IntersectSphereSystem(SEXP ext, SEXP R_n, SEXP R_z) {
+SEXP IntersectSphereSystem(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_intern) {
   checkPtr(ext, sphere_type_tag);
 
   STGM::CVector3d n(REAL(R_n)[0],REAL(R_n)[1],REAL(R_n)[2]);
@@ -305,13 +308,14 @@ SEXP IntersectSphereSystem(SEXP ext, SEXP R_n, SEXP R_z) {
   if(PL>100) Rprintf("Intersect with plane: %d \n", sp->refObjects().size());
 
   STGM::IntersectorSpheres objects;
-  sp->IntersectWithPlane(objects,plane);
+  int intern = asInteger(AS_INTEGER(R_intern));
+  sp->IntersectWithPlane(objects,plane,intern);
 
   return convert_R_Circles(objects);
 }
 
 
-void STGM::CBoolSphereSystem::IntersectWithPlane(STGM::IntersectorSpheres &objects, STGM::CPlane &plane)
+void STGM::CBoolSphereSystem::IntersectWithPlane(STGM::IntersectorSpheres &objects, STGM::CPlane &plane, int intern)
 {
   /// Intersect only objects fully inside the observation window
    int i=0,j=0;

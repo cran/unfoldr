@@ -33,11 +33,16 @@ SEXP convert_R_Cylinder( STGM::CCylinder &cyl, STGM::LateralPlanes &planes , STG
 SEXP convert_R_Cylinders( STGM::Cylinders &cyl, STGM::CBox3 &box);
 STGM::CCylinder convert_C_Cylinder(SEXP R_cyl);
 
-void _cylp_finalizer(SEXP ext)
-{
+void _free_cylinders(STGM::CCylinderSystem *sp){
+  if(!sp) return;
+  sp->~CCylinderSystem();
+  Free(sp);
+}
+
+void _cylp_finalizer(SEXP ext) {
     checkPtr(ext, cylinder_type_tag);
     STGM::CCylinderSystem *sptr = static_cast<STGM::CCylinderSystem *>(R_ExternalPtrAddr(ext));
-    delete sptr;
+    _free_cylinders(sptr);
     R_ClearExternalPtr(ext);
 }
 
@@ -85,9 +90,7 @@ SEXP UpdateIntersectionsCylinder(SEXP R_cylinder, SEXP R_cluster_ids, SEXP R_box
     }
     UNPROTECT(nProtected);
     return R_ret;
-  }
-
-
+}
 
 STGM::CCylinderSystem * InitCylinderSystem(SEXP R_param, SEXP R_cond) {
   SEXP R_box;
@@ -124,8 +127,11 @@ SEXP CylinderSystem(SEXP R_param, SEXP R_cond)
   if(TYPEOF(call_data->fname) != VECSXP) {
         sp->simSysJoint(call_data);
     } else {
-        if(!strcmp(GET_NAME(call_data,0), "rbinorm") ) {
+        const char *ftype_size = GET_NAME(call_data,0);
+        if(!std::strcmp(ftype_size, "rbinorm") ) {
             sp->simBivariate(call_data);
+        } else if(!std::strcmp(ftype_size, "const")) {
+            sp->simConstCylinderSys(call_data);
         } else {
             sp->simCylinderSys(call_data);
         }
@@ -133,7 +139,7 @@ SEXP CylinderSystem(SEXP R_param, SEXP R_cond)
   deleteRCall(call_data);
 
   if(PL>100) {
-    Rprintf("Simulated %d spheroids: %p \n",sp->refObjects().size(), sp);
+    Rprintf("Simulated %d cylinders: %p \n",sp->refObjects().size(), sp);
   }
 
   SEXP R_cylinders = R_NilValue;
@@ -153,6 +159,79 @@ SEXP CylinderSystem(SEXP R_param, SEXP R_cond)
 
   UNPROTECT(2);
   return R_cylinders;
+}
+
+void STGM::CCylinderSystem::simConstCylinderSys(R_Calldata d){
+  // init RNG state
+  GetRNGstate();
+  // set cylinder label
+  const char *label = translateChar(asChar(d->label));
+  // intensity
+  int nTry=0;
+  while(num==0 && nTry<MAX_ITER) {
+   num = rpois(m_box.volume()*m_lam);
+   ++nTry;
+  }
+  m_cylinders.reserve(num);
+
+   // direction
+   const char *fname_dir = GET_NAME(d,2);
+   STGM::CSpheroid::direction_type dtype = STGM::CSpheroid::UNIFORM_D;
+   if(!std::strcmp( fname_dir, "rbetaiso" )) {
+      dtype=STGM::CSpheroid::BETAISOTROP_D;
+   } else if(!std::strcmp( fname_dir, "rvMisesFisher")) {
+      dtype=STGM::CSpheroid::MISES_D;
+   }
+   double kappa = asReal(VECTOR_ELT(VECTOR_ELT(d->args,2),0));
+   // simulation box
+   double m1 = m_box.m_size[0] +(m_box.m_center[0]-m_box.m_extent[0]),
+          m2 = m_box.m_size[1] +(m_box.m_center[1]-m_box.m_extent[1]),
+          m3 = m_box.m_size[2] +(m_box.m_center[2]-m_box.m_extent[2]);
+
+   // shape distribution, only constant or rbeta
+   rdist2_t rshape;
+   double s2 = 0, s = 1;
+   const char *fname_shape = GET_NAME(d,1);
+   double s1 = asReal(VECTOR_ELT(VECTOR_ELT(d->args,1),0));
+   if ( !std::strcmp(fname_shape, "rbeta" )) {
+     rshape = &rbeta;
+     s2 = asReal(VECTOR_ELT(VECTOR_ELT(d->args,1),1));
+   } else if(!std::strcmp(fname_shape,"const")) {
+     rshape = &rconst;
+   }
+
+   double theta = 0, phi = 0, r = 0;
+   // height is always constant here, no perfect simulation
+   double h = asReal(VECTOR_ELT(VECTOR_ELT( d->args, 0),0));
+
+   /* loop over all */
+   CVector3d u;
+   for (size_t niter=0; niter<num; niter++)  {
+        /* direction */
+        switch(dtype) {
+            case 0:
+              runidir(u.ptr(),theta,phi); break;
+            case 1:
+              if(kappa<1e-8) {
+                u = (runif(0.0,1.0)<0.5) ? m_mu : -m_mu;
+              } else {
+                rOhserSchladitz(u.ptr(),m_mu.ptr(), kappa, theta, phi);
+              }
+              break;
+            case 2:
+              if(kappa<1e-8)
+                runidir(u.ptr(),theta,phi);
+              else
+                rVonMisesFisher(u.ptr(), m_mu.ptr(), kappa, theta, phi);
+              break;
+       }
+       s = rshape(s1,s2);
+
+       /* sample positions conditionally of radii distribution */
+       STGM::CVector3d center(runif(0.0,1.0)*m1,runif(0.0,1.0)*m2, runif(0.0,1.0)*m3);
+       m_cylinders.push_back(STGM::CCylinder(center,u,h,h*s,theta,phi,r,niter+1,label) );
+   }
+   PutRNGstate();
 }
 
 void STGM::CCylinderSystem::simSysJoint(R_Calldata d) {
@@ -215,7 +294,7 @@ void STGM::CCylinderSystem::simBivariate(R_Calldata d) {
   cum_prob_k(mx,sdx2,m_box.m_up[0],m_box.m_up[1],m_box.m_up[2],p,&mu);
 
   if(PL>100) {
-     Rprintf("Spheroids (perfect) simulation, bivariate lognormal length/shape: \n");
+     Rprintf("Cylinders (perfect) simulation, bivariate lognormal length/shape: \n");
      Rprintf("\t size distribution: %s with %f %f %f %f %f\n", GET_NAME(d,0), mx,my,sdx,sdy,rho);
      Rprintf("\t directional distribution: %s  with %f \n", GET_NAME(d,2), kappa);
      Rprintf("\t cum sum of probabilities: %f, %f, %f, %f \n",p[0],p[1],p[2],p[3]);
@@ -264,108 +343,154 @@ void STGM::CCylinderSystem::simBivariate(R_Calldata d) {
 }
 
 void STGM::CCylinderSystem::simCylinderSys(R_Calldata d) {
-  GetRNGstate();
+     // init RNG state
+     GetRNGstate();
+     // set cylinder label
+     const char *label = translateChar(asChar(d->label));
 
-  int nTry=0;
-  while(num==0 && nTry<MAX_ITER) {
-     num = rpois(m_box.volume()*m_lam);
-     ++nTry;
-  }
-  m_cylinders.reserve(num);
+     // get intensity
+     double p[4], mu=0;
 
-  rdist2_t rdist;
-  const char *fname = GET_NAME(d,0);
+     rdist2_t rdist;
+     double p1 = asReal(VECTOR_ELT(VECTOR_ELT( d->args, 0),0));
+     double p2 = asReal(VECTOR_ELT(VECTOR_ELT( d->args, 0),1));
 
-  if ( !strcmp(fname, "rbeta" )) {
-       rdist=&rbeta;
-   } else if(!strcmp(fname, "rlnorm")) {
-       rdist=&rlnorm;
-   } else if(!strcmp(fname, "rgamma")) {
-       rdist=&rgamma;
-   } else if(!strcmp(fname, "runif" )) {
-       rdist=&runif;
-   } else if(!strcmp(fname, "const" )) {
-       rdist=&rconst;
-   }
+     /** @todo: here sd for rlnorm only,
+      *  calculate for rbeta, rgamma, runif */
+     double sd2 = SQR(p2);
+     cum_prob_k(p1,sd2,m_box.m_up[0],m_box.m_up[1],m_box.m_up[2],p,&mu);
 
-  Rboolean isRadius = FALSE;
-  const char *fname_shape = GET_NAME(d,1);
-  if(!strcmp(fname_shape, "radius" )) {
-    isRadius = TRUE;
-  }
+     int nTry=0;
+     while(num==0 && nTry<MAX_ITER) {
+        num = rpois(mu*m_lam);
+        ++nTry;
+     }
+     m_cylinders.reserve(num);
 
-  const char *fname_dir = GET_NAME(d,2);
-  const char *label = translateChar(asChar(d->label));
+     const char *fname = GET_NAME(d,0);
+     if ( !std::strcmp(fname, "rbeta" )) {
+          rdist=&rbeta;
+      } else if(!std::strcmp(fname, "rlnorm")) {
+          rdist=&rlnorm;
+      } else if(!std::strcmp(fname, "rgamma")) {
+          rdist=&rgamma;
+      } else if(!std::strcmp(fname, "runif" )) {
+          rdist=&runif;
+      } else {
+          error(_("unknown random size distribution"));
+      }
 
-  STGM::CCylinder::direction_type dtype = STGM::CCylinder::UNIFORM_D;
-  if(!strcmp( fname_dir, "rbetaiso" )) {
-     dtype=STGM::CCylinder::BETAISOTROP_D;
-  } else if(!strcmp( fname_dir, "rvMisesFisher")) {
-     dtype=STGM::CCylinder::MISES_D;
-  }
+     // shape distribution
+     rdist2_t rshape;
+     double s2 = 0, s = 1;
+     const char *fname_shape = GET_NAME(d,1);
+     double s1 = asReal(VECTOR_ELT(VECTOR_ELT(d->args,1),0));
+     if ( !std::strcmp(fname_shape, "rbeta" )) {
+         rshape = &rbeta;
+         s2 = asReal(VECTOR_ELT(VECTOR_ELT(d->args,1),1));
+      } else if(!std::strcmp(fname_shape,"const")) {
+         rshape = &rconst;
+      } else {
+         error(_("unknown random shape factor distribution"));
+      }
 
-  double m1 = m_box.m_size[0] +(m_box.m_center[0]-m_box.m_extent[0]),
-         m2 = m_box.m_size[1] +(m_box.m_center[1]-m_box.m_extent[1]),
-         m3 = m_box.m_size[2] +(m_box.m_center[2]-m_box.m_extent[2]);
+     const char *fname_dir = GET_NAME(d,2);
+     STGM::CCylinder::direction_type dtype = STGM::CCylinder::UNIFORM_D;
+     if(!std::strcmp( fname_dir, "rbetaiso" )) {
+        dtype=STGM::CCylinder::BETAISOTROP_D;
+     } else if(!std::strcmp( fname_dir, "rvMisesFisher")) {
+        dtype=STGM::CCylinder::MISES_D;
+     } else {
+        error(_("unknown random orientation distribution"));
+     }
+     double kappa = asReal(VECTOR_ELT(VECTOR_ELT(d->args,2),0));
 
-
-  /* shape is always a constant here */
-  double shape = asReal(VECTOR_ELT(VECTOR_ELT(d->args,1),0));
-
-  double p1=0, p2=0,
-         h=0, radius=0,
-         kappa=0, theta=0, phi=0, r=0;
-
-  // orientation iso parameter
-  kappa = asReal(VECTOR_ELT(VECTOR_ELT(d->args,2),0));
-  // distribution parameters
-  p1=asReal(VECTOR_ELT(VECTOR_ELT( d->args, 0),0));
-  if(strcmp(fname, "const" ))
-   p2=asReal(VECTOR_ELT(VECTOR_ELT( d->args, 0),1));
-
-  if(PL>100) {
-      Rprintf("Run cylinder simulation... \n");
-      Rprintf("\t size distribution: %s with %f %f \n", fname, p1,p2);
-
-      if(isRadius)
-        Rprintf("\t constant radius: %f \n", shape);
-      else
-        Rprintf("\t constant shape parameter: %f \n", shape);
-
-      Rprintf("\t directional distribution: %s  with %f \n", fname_dir, kappa);
-      Rprintf("\t set label: %s to character: \n",label);
-  }
-
-  /* loop over all */
-  CVector3d u;
-  for (size_t niter=0; niter<num; niter++)
-  {
-      h = rdist(p1,p2);                                /* cylinder axis, for rlnorm possibly switch to perfect simulation */
-      r = (isRadius ? shape : h * shape);         /* either fixed radius or radius as portion of height */
-
-      /* direction */
-      switch(dtype) {
-          case 0:
-            runidir(u.ptr(),theta,phi); break;
-          case 1:
-            if(kappa<1e-8) {
-              u = (runif(0.0,1.0)<0.5) ? m_mu : -m_mu;
-            } else {
-              rOhserSchladitz(u.ptr(),m_mu.ptr(), kappa, theta, phi);
-            }
-            break;
-          case 2:
-            if(kappa<1e-8)
-              runidir(u.ptr(),theta,phi);
-            else
-              rVonMisesFisher(u.ptr(), m_mu.ptr(), kappa, theta, phi);
-            break;
+     if(PL>100) {
+         Rprintf("Run cylinder  simulation... \n");
+         Rprintf("\t size distribution: %s with %f %f \n", fname, p1,p2);
+         Rprintf("\t shape parameters: %f %f\n", s1, s2);
+         Rprintf("\t directional distribution: %s  with %f \n", fname_dir, kappa);
+         Rprintf("\t set label: %s to character: \n",label);
      }
 
-     STGM::CVector3d center(runif(0.0,1.0)*m1,runif(0.0,1.0)*m2, runif(0.0,1.0)*m3);
-     m_cylinders.push_back( STGM::CCylinder(center,u,h,r,theta,phi,radius,niter+1,label) );
+     /* loop over all */
+     CVector3d u;
+     int k = 0;
+     double h=0,                // cylinder hight
+            theta=0, phi=0,     // random direction angles
+            r=0;                // perfect simulation radius
+     for (size_t niter=0; niter<num; niter++)  {
+         h = rdist(p1,p2);
+         s = rshape(s1,s2);
+
+         /* direction */
+         switch(dtype) {
+             case 0:
+               runidir(u.ptr(),theta,phi); break;
+             case 1:
+               if(kappa<1e-8) {
+                 u = (runif(0.0,1.0)<0.5) ? m_mu : -m_mu;
+               } else {
+                 rOhserSchladitz(u.ptr(),m_mu.ptr(), kappa, theta, phi);
+               }
+               break;
+             case 2:
+               if(kappa<1e-8)
+                 runidir(u.ptr(),theta,phi);
+               else
+                 rVonMisesFisher(u.ptr(), m_mu.ptr(), kappa, theta, phi);
+               break;
+        }
+
+         /* sample positions conditionally of radii distribution */
+         sample_k(p,&k);
+         r=rdist(p1+k*sd2,sd2);
+         if(m_maxR<r) m_maxR=r;
+
+         if(!R_FINITE(r))
+           warning(_("simCylinderSys: Some NA/NaN, +/-Inf produced"));
+
+         STGM::CVector3d center(runif(0.0,1.0)*(m_box.m_size[0]+2*r)+(m_box.m_low[0]-r),
+                                runif(0.0,1.0)*(m_box.m_size[1]+2*r)+(m_box.m_low[1]-r),
+                                runif(0.0,1.0)*(m_box.m_size[2]+2*r)+(m_box.m_low[2]-r));
+
+         m_cylinders.push_back( STGM::CCylinder(center,u,h,h*s,theta,phi,r,niter+1,label) );
+     }
+     PutRNGstate();
+}
+
+void STGM::CCylinderSystem::IntersectWithPlane(IntersectorCylinders &objects, CPlane &plane, int intern)
+{
+  int i,j;
+  switch(plane.idx()) {
+        case 0: i=1; j=2; break; // YZ
+        case 1: i=0; j=2; break; // XZ
+        case 2: i=0; j=1; break; // XY
   }
-  PutRNGstate();
+  CWindow win(m_box.m_size[i],m_box.m_size[j]);
+
+  for(size_t i=0; i<m_cylinders.size(); ++i) {
+         IntersectorCylinder intersector(m_cylinders[i], plane, m_box.m_size);
+         if(intersector.TestIntersection()) {
+             intersector.FindIntersection();
+             if(intersector.getType() == CIRCLE_CAPS ||
+                intersector.getType() == CIRCLE) {
+               if(intern) {
+                 if((intersector.getCircle1()).isInWindow(win))
+                   objects.push_back(intersector);
+               } else objects.push_back(intersector);
+             } else if(intersector.getType() == ELLIPSE ||
+                       intersector.getType() == ELLIPSE_ARC ||
+                       intersector.getType() == ELLIPSE_SEGMENT) {
+
+                 if(intern) {
+                   if((intersector.getEllipse()).isInWindow(win))
+                     objects.push_back(intersector);
+                 } else objects.push_back(intersector);
+             }
+         }
+
+     }
 }
 
 STGM::CCylinder convert_C_Cylinder(SEXP R_cyl)
@@ -381,7 +506,7 @@ STGM::CCylinder convert_C_Cylinder(SEXP R_cyl)
   if(!isNull(getAttrib(R_cyl, install("radius"))))
     radius = asReal(getAttrib(R_cyl, install("radius")));
 
-  if(!strcmp(label,"F")) {
+  if(!std::strcmp(label,"F")) {
       SEXP R_ctr;
       PROTECT( R_ctr    = AS_NUMERIC( getListElement( R_cyl, "center")));
       STGM::CVector3d ctr(REAL(R_ctr)),u(0,0,1);
@@ -505,4 +630,27 @@ SEXP convert_R_Cylinders( STGM::Cylinders &cyls, STGM::CBox3 &box) {
   return(R_resultlist);
 }
 
+
+
+SEXP CDigitizeCylinderIntersections(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_delta)
+{
+  checkPtr(ext, cylinder_type_tag);
+  STGM::CVector3d n(REAL(R_n)[0],REAL(R_n)[1],REAL(R_n)[2]);
+  STGM::CPlane plane( n , asReal(R_z));
+
+  STGM::IntersectorCylinders objects;
+  STGM::CCylinderSystem *cyls = static_cast<STGM::CCylinderSystem *>(getExternalPtr(ext));
+  cyls->IntersectWithPlane(objects,plane,0);
+
+  int nPix = (int) cyls->box().m_size[0]/asReal(R_delta);
+
+  SEXP R_W = R_NilValue;
+  PROTECT(R_W = allocMatrix(INTSXP,nPix,nPix));
+
+  Rprintf("Digitize: nPix: %d, delta: %f \n",nPix,REAL(R_delta)[0]);
+  digitizeCylinderIntersections(objects, INTEGER(R_W),nPix,asReal(R_delta));
+
+  UNPROTECT(1);
+  return R_W;
+}
 

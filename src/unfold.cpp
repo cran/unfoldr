@@ -25,7 +25,6 @@
 #define PHI_TOL  10e-13
 
 #define DivPI 1.27323954473516276486
-//#define M_4_PI 1.273239544735162764865776807710062712
 
 /**  elliptic integral second kind */
 extern double elle_int2(double, double);
@@ -540,7 +539,7 @@ SEXP CoefficientMatrixSpheroids(SEXP R_A, SEXP R_alpha, SEXP R_S,
   double *A=REAL(R_A), *S=REAL(R_S), *alpha=REAL(R_alpha);
   /* double *a=REAL(R_a), *s=REAL(R_s), *Theta=REAL(R_Theta); */
 
-  if ( !strcmp( translateChar(STRING_ELT(VECTOR_ELT(R_args,0),0)), "prolate" )) {
+  if ( !std::strcmp( translateChar(STRING_ELT(VECTOR_ELT(R_args,0),0)), "prolate" )) {
     K_Prolate_s p(A,alpha,S);
     KFunctor<K_Prolate_s>(P,p);
   } else {
@@ -648,8 +647,8 @@ static R_CMethodDef CEntries[]  = {
 static R_CallMethodDef CallEntries[] = {
       CALLDEF(EllipsoidSystem,2),
       CALLDEF(CylinderSystem,2),
-      CALLDEF(IntersectSpheroidSystem,3),
-      CALLDEF(IntersectSphereSystem,3),
+      CALLDEF(IntersectSpheroidSystem,4),
+      CALLDEF(IntersectSphereSystem,4),
       CALLDEF(UpdateIntersections,2),
       CALLDEF(SphereSystem,2),
       CALLDEF(GetSphereSystem,1),

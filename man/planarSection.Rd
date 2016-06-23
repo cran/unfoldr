@@ -4,12 +4,15 @@
 \alias{planarSection}
 \title{Sphere planar section}
 \usage{
-planarSection(S, d)
+planarSection(S, d, intern = FALSE)
 }
 \arguments{
 \item{S}{list of spheres, see \code{\link{simSphereSystem}}}
 
 \item{d}{distance of the intersecting xy-plane to the origin}
+
+\item{intern}{\code{intern=FALSE} (default) return all sections otherwise 
+only those which have their centers inside the intersection window}
 }
 \value{
 vector of circle radii

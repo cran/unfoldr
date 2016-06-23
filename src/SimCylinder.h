@@ -12,7 +12,6 @@
 
 #include "Utils.h"
 #include "Intersector.h"
-#include "GeometricPrimitives.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,6 +19,7 @@ extern "C" {
 
   SEXP FinalizeCylinderSystem(SEXP ext);
   SEXP CylinderSystem(SEXP R_param, SEXP R_cond);
+  SEXP CDigitizeCylinderIntersections(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_delta);
 
 #ifdef __cplusplus
 }
@@ -39,6 +39,7 @@ class CCylinderSystem {
 
   void simSysJoint(R_Calldata d);
   void simCylinderSys(R_Calldata d);
+  void simConstCylinderSys(R_Calldata d);
   void simBivariate(R_Calldata d);
 
   CCylinder simCylinder();
@@ -52,6 +53,7 @@ class CCylinderSystem {
   STGM::CBox3 &box()  { return m_box; }
   const STGM::CBox3 &box() const { return m_box; }
 
+  void IntersectWithPlane(IntersectorCylinders &objects, STGM::CPlane &plane, int intern);
 
   private:
     CBox3 m_box;

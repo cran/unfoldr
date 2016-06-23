@@ -4,14 +4,17 @@
 \alias{verticalSection}
 \title{Spheroid vertical section}
 \usage{
-verticalSection(S, d, n = c(1, 0, 0))
+verticalSection(S, d, n = c(0, 1, 0), intern = FALSE)
 }
 \arguments{
 \item{S}{list of spheroids, see \code{\link{simSpheroidSystem}}}
 
 \item{d}{distance of intersecting plane to the origin}
 
-\item{n}{normal vector}
+\item{n}{normal vector of intersting plane}
+
+\item{intern}{\code{intern=FALSE} (default) return all section profiles otherwise 
+only those which have their centers inside the intersection window}
 }
 \value{
 list of size, shape and angle of section profiles
@@ -20,8 +23,8 @@ list of size, shape and angle of section profiles
 Vertical section of spheroid system
 }
 \details{
-The function performs a vertical intersection of the spheroid system either
-parallel to yz-plane defined by the normal vector \code{n=c(1,0,0)} or
-xz-plane defined by \code{n=c(0,1,0)}.
+The function performs a vertical intersection defined by the normal vector
+\code{n=c(0,1,0)} which depends on the main orientation axis of the 
+coordinate system and has to be parallel to this.
 }
 

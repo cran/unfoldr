@@ -8,11 +8,18 @@
 #define VECTOR_H_
 
 #include <R.h>
+
+#include <cmath>
 #include <cstring>
 #include <vector>
+#include <algorithm>
 
 template<class T>
 inline T SQR(const T a) {return a*a;}
+
+template<class T>
+inline int SGN(const T a)
+{return (a > 0) - (a < 0); }
 
 template<class T>
 inline const T &MAX(const T &a, const T &b)

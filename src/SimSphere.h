@@ -44,7 +44,7 @@ public:
   STGM::Spheres &refObjects()  { return m_spheres; }
   const STGM::Spheres &refObjects() const { return m_spheres; }
 
-  void IntersectWithPlane(IntersectorSpheres &objects, STGM::CPlane &plane, int intern);
+  void IntersectWithPlane(STGM::Intersectors<STGM::CSphere>::Type &objects, STGM::CPlane &plane, int intern);
 
   template<typename F> void simSpheres(F f, const char *label);
   void simSpheresPerfect(double mx, double sdx, const char *label);

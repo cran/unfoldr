@@ -53,7 +53,7 @@ class CCylinderSystem {
   STGM::CBox3 &box()  { return m_box; }
   const STGM::CBox3 &box() const { return m_box; }
 
-  void IntersectWithPlane(IntersectorCylinders &objects, STGM::CPlane &plane, int intern);
+  void IntersectWithPlane(STGM::Intersectors<STGM::CCylinder>::Type &objects, STGM::CPlane &plane, int intern);
 
   private:
     CBox3 m_box;

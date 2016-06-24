@@ -63,7 +63,7 @@ class CEllipsoidSystem
   const STGM::CBox3 &box() const { return m_box; }
   STGM::CBox3 &box()  { return m_box; }
 
-  void IntersectWithPlane(IntersectorSpheroids &objects, STGM::CPlane &plane, int intern);
+  void IntersectWithPlane(STGM::Intersectors<STGM::CSpheroid>::Type &objects, STGM::CPlane &plane, int intern);
 
   Rboolean isPerfect() { return (m_perfect > 0 ? TRUE : FALSE); }
 

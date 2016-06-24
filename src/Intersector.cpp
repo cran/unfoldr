@@ -10,7 +10,7 @@
 namespace STGM
 {
 
-  bool IntersectorSpheroid::TestIntersection ()
+  bool Intersector<STGM::CSpheroid>::TestIntersection ()
   {
     int i=0,j=0,k=0;
 
@@ -50,7 +50,7 @@ namespace STGM
  }
 
 
-  bool IntersectorSpheroid::FindIntersection ()
+  bool Intersector<STGM::CSpheroid>::FindIntersection ()
   {
         int i=0,j=0,k=0;
         const CMatrix3d &A = m_spheroid.MatrixA();
@@ -105,12 +105,12 @@ namespace STGM
   }
 
 
-  bool IntersectorSphere::TestIntersection () {
+  bool Intersector<STGM::CSphere>::TestIntersection () {
     double sDist = m_plane.distanceTo(m_sphere.center());
     return fabs(sDist) <= m_sphere.r();
   }
 
-  bool IntersectorSphere::FindIntersection () {
+  bool Intersector<STGM::CSphere>::FindIntersection () {
     double sDist = m_plane.distanceTo(m_sphere.center());
     double dist  = fabs(sDist);
 
@@ -125,7 +125,7 @@ namespace STGM
   }
 
 
-  bool IntersectorCylinder::TestIntersection(const CPlane &plane) {
+  bool Intersector<STGM::CCylinder>::TestIntersection(const CPlane &plane) {
      double UdotN = m_cylinder.u().dot(plane.n);
      double sDist = plane.distanceTo(m_cylinder.origin0());
 
@@ -174,7 +174,7 @@ namespace STGM
    }
 
 
-  bool IntersectorCylinder::FindIntersection()
+  bool Intersector<STGM::CCylinder>::FindIntersection()
    {
      double cosTheta = m_cylinder.u().dot(m_plane.n);
      double absCosTheta = fabs(cosTheta);
@@ -202,7 +202,7 @@ namespace STGM
       return false;
    }
 
-  double IntersectorCylinder::GetEllipseSegment(STGM::CVector3d m_center, const STGM::CVector3d &ipt)
+  double Intersector<STGM::CCylinder>::GetEllipseSegment(STGM::CVector3d m_center, const STGM::CVector3d &ipt)
   {
     m_center -= ipt;
     double r = sqrt( SQR(m_cylinder.r()) - SQR(m_center.Length()) );
@@ -215,7 +215,7 @@ namespace STGM
                           /(m_ellipse.m_a*cos(m_cylinder.phi())+m_ellipse.m_a*SQR(sin(m_cylinder.phi()))/cos(m_cylinder.phi())));
   }
 
-  CCircle3 IntersectorCylinder::GetCircle(STGM::CVector3d &spherecenter, double sDist) {
+  CCircle3 Intersector<STGM::CCylinder>::GetCircle(STGM::CVector3d &spherecenter, double sDist) {
     STGM::CVector3d ctr(spherecenter[0] - sDist*m_plane.n[0],
                         spherecenter[1] - sDist*m_plane.n[1],
                         spherecenter[2] - sDist*m_plane.n[2]);
@@ -223,7 +223,7 @@ namespace STGM
     return STGM::CCircle3(ctr,radius, m_plane.n,1);
   }
 
-  IntersectionType IntersectorCylinder::FindIntersectionType()
+  IntersectionType Intersector<STGM::CCylinder>::FindIntersectionType()
   {
      double sDist = m_plane.distanceTo(m_cylinder.origin0());
      double sDist2 = m_plane.distanceTo(m_cylinder.origin1());
@@ -352,29 +352,32 @@ namespace STGM
 
   }
 
-void digitizeCylinderIntersections(IntersectorCylinders &objects, int *w, int nPix, double delta) {
-    STGM::CDigitizer digitizer(w,nPix,nPix,delta);
+  template<>
+  void digitize(STGM::Intersectors<STGM::CCylinder>::Type &objects, int *w, int nPix, double delta) {
     int type = 0;
 
     for(size_t k=0;k<objects.size();k++) {
-        type = objects[k].getType();
-        //Rprintf("element k %d, type %d \n",k,type);
-        if(type == CIRCLE_CAPS || type == CIRCLE) {
-            digitizer.start<STGM::CCircle3 &>(objects[k].getCircle1());
-        } else if(type == ELLIPSE ||
-                  type == ELLIPSE_ARC ||
-                  type == ELLIPSE_SEGMENT)
-        {
-            digitizer.start<STGM::CEllipse3 &>(objects[k].getEllipse());
-        }
+       type = objects[k].getType();
+       //Rprintf("element k %d, type %d \n",k,type);
+       if(type == CIRCLE_CAPS || type == CIRCLE) {
+           STGM::CDigitizer<STGM::CCircle3> digitizer(w,nPix,nPix,delta);
+           digitizer.start(objects[k].getCircle1());
+       } else if(type == ELLIPSE ||
+                 type == ELLIPSE_ARC ||
+                 type == ELLIPSE_SEGMENT) {
+           STGM::CDigitizer<STGM::CEllipse3> digitizer(w,nPix,nPix,delta);
+           digitizer.start(objects[k].getEllipse());
+       }
     }
-}
+  }
 
-void digitizeSpheroidIntersections(IntersectorSpheroids &objects, int *w, int nPix, double delta) {
-      STGM::CDigitizer digitizer(w,nPix,nPix,delta);
-      for(size_t k=0;k<objects.size();k++)
-          digitizer.start<STGM::CEllipse2 &>(objects[k].getEllipse());
+  template<>
+  void digitize(STGM::Intersectors<STGM::CSpheroid>::Type &objects, int *w, int nPix, double delta) {
+    STGM::CDigitizer<STGM::CEllipse2> digitizer(w,nPix,nPix,delta);
+    for(size_t k=0;k<objects.size();k++)
+       digitizer.start(objects[k].getEllipse());
 
-}
+  }
+
 
 } /* namespace STGM */

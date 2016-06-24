@@ -17,6 +17,7 @@ namespace STGM
     * @brief Digitizer
     */
 
+   template<class T>
    class CDigitizer
    {
     public:
@@ -33,8 +34,7 @@ namespace STGM
 
       virtual ~CDigitizer() {};
 
-      template<typename T>
-      void start(T & obj)
+      void start(T& obj)
       {
          //Rprintf("thread num: %d\n",omp_get_thread_num());
 
@@ -80,6 +80,7 @@ namespace STGM
     ELLIPSE_2D        // 10
   };
 
+  template<class T>
   class Intersector
     {
     public:
@@ -98,21 +99,22 @@ namespace STGM
    * @brief IntersectorSpheroidPlane
    *            Only find first intersection with some plane
    */
-  class IntersectorSpheroid : public Intersector
+  template<>
+  class Intersector<STGM::CSpheroid>
   {
   public:
-    IntersectorSpheroid(CSpheroid &_spheroid, CPlane &_plane, CPoint3d &_dimensions)
+    Intersector(CSpheroid &_spheroid, CPlane &_plane, CPoint3d &_dimensions)
      : m_spheroid(_spheroid), m_plane(_plane), m_size(_dimensions), m_type(EMPTY)
     {
     };
 
-    IntersectorSpheroid(CSpheroid &_spheroid, CPoint3d &_dimensions)
+    Intersector(CSpheroid &_spheroid, CPoint3d &_dimensions)
         : m_spheroid(_spheroid), m_size(_dimensions), m_type(EMPTY)
     {
     };
 
     virtual
-    ~IntersectorSpheroid() {}
+    ~Intersector() {}
 
     bool TestIntersection ();
     bool FindIntersection ();
@@ -155,6 +157,9 @@ namespace STGM
       return interior;
     }
 
+
+    void digitize(int *w, int nPix, double delta);
+
   private:
     CSpheroid m_spheroid;
     CPlane m_plane;
@@ -166,26 +171,24 @@ namespace STGM
 
   };
 
-  typedef std::vector<IntersectorSpheroid> IntersectorSpheroids;
-
-  void digitizeSpheroidIntersections(IntersectorSpheroids &objects, int *w, int nPix, double delta);
-
-
-  class IntersectorSphere
-    : public Intersector
+  /**
+   * \brief Intersector sphere
+   */
+  template<>
+  class Intersector<STGM::CSphere>
   {
   public:
-    IntersectorSphere(CSphere& sphere, CPlane& plane, CPoint3d size) :
+    Intersector(CSphere& sphere, CPlane& plane, CPoint3d size) :
        m_sphere(sphere), m_plane(plane), m_size(size), m_type(EMPTY)
     {}
 
-    IntersectorSphere(CSphere &_sphere, CPoint3d &_dimensions) :
+    Intersector(CSphere &_sphere, CPoint3d &_dimensions) :
        m_sphere(_sphere), m_size(_dimensions), m_type(EMPTY)
     {
     };
 
     virtual
-    ~IntersectorSphere() {}
+    ~Intersector() {}
 
     bool TestIntersection ();
     bool FindIntersection ();
@@ -229,23 +232,19 @@ namespace STGM
     CCircle3 m_circle;
   };
 
-  // typedefs
-  typedef std::vector<IntersectorSphere> IntersectorSpheres;
-
-
-  class IntersectorCylinder
-      : public Intersector
+  template<>
+  class Intersector<STGM::CCylinder>
     {
     public:
 
-      IntersectorCylinder( CCylinder &_cylinder,  CPlane &_plane, CPoint3d &_dimensions)
+      Intersector( CCylinder &_cylinder,  CPlane &_plane, CPoint3d &_dimensions)
         : m_cylinder(_cylinder), m_plane(_plane), m_size(_dimensions), m_type(EMPTY), m_side(0)
       {
         setPlaneIdx();
       };
 
 
-      IntersectorCylinder(  CCylinder &_cylinder, CPoint3d &_dimensions)
+      Intersector(  CCylinder &_cylinder, CPoint3d &_dimensions)
         : m_cylinder(_cylinder), m_plane(STGM::CPlane()), m_size(_dimensions), m_type(EMPTY),  m_side(0)
       {
         setPlaneIdx();
@@ -253,7 +252,7 @@ namespace STGM
 
 
       virtual
-      ~IntersectorCylinder() {};
+      ~Intersector() {};
 
       const CCylinder & getCylinder () const { return m_cylinder; };
 
@@ -353,6 +352,8 @@ namespace STGM
             return interior;
      }
 
+     void digitize(int *w, int nPix, double delta);
+
     private:
       CCylinder m_cylinder;
       CPlane m_plane;
@@ -369,8 +370,13 @@ namespace STGM
 
     };
 
-    /** some type definitions */
-    typedef std::vector<IntersectorCylinder> IntersectorCylinders;
+     /** some type definitions */
+     template<class T>
+     struct Intersectors { typedef typename std::vector< Intersector<T> > Type;  };
+
+     /// to be specialized in file Intersector.cpp
+     template< class T>
+     void digitize(T &objects, int *w, int nPix, double delta) {;}
 
 
     /**
@@ -381,8 +387,8 @@ namespace STGM
        * @param nPix
        * @param delta
        */
-      void digitizeCylinderIntersections(IntersectorCylinders &objects, int *w, int nPix, double delta);
-      void digitizeSpheroidIntersections(IntersectorSpheroids &objects, int *w, int nPix, double delta);
+      //void digitizeCylinderIntersections(IntersectorCylinders &objects, int *w, int nPix, double delta);
+      //void digitizeSpheroidIntersections(IntersectorSpheroids &objects, int *w, int nPix, double delta);
 
 } /* namespace STGM */
 

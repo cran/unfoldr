@@ -33,8 +33,8 @@ do {                                              \
 #define GET_OBJECT_CLASS(RS) translateChar(asChar(getAttrib( (RS), R_ClassSymbol)))
 
 SEXP convert_R_EllipsoidSystem( STGM::Spheroids &spheroids, STGM::CBox3 &box);
-SEXP convert_R_Ellipses_all(STGM::IntersectorSpheroids &objects);
-SEXP convert_R_Ellipses_trunc(STGM::IntersectorSpheroids &objects);
+SEXP convert_R_Ellipses_all(STGM::Intersectors<STGM::CSpheroid>::Type &objects);
+SEXP convert_R_Ellipses_trunc(STGM::Intersectors<STGM::CSpheroid>::Type &objects);
 
 extern STGM::CSphere convert_C_Sphere(SEXP R_sphere);
 extern STGM::CCylinder convert_C_Cylinder(SEXP R_cyl);
@@ -209,7 +209,7 @@ SEXP IntersectSpheroidSystem(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_intern)
     Rprintf("Intersect with plane: %d , %p \n", sp->refObjects().size(), sp);
   }
   int intern = asInteger(AS_INTEGER(R_intern));
-  STGM::IntersectorSpheroids objects;
+  STGM::Intersectors<STGM::CSpheroid>::Type objects;
   sp->IntersectWithPlane(objects,plane,intern);
 
   SEXP R_ellipses;
@@ -256,7 +256,7 @@ SEXP SimulateSpheroidsAndIntersect(SEXP R_param, SEXP R_cond) {
   else error(_("intersection is set to zero"));
 
   STGM::CPlane plane(STGM::CVector3d(1,0,0),dz);
-  STGM::IntersectorSpheroids objects;
+  STGM::Intersectors<STGM::CSpheroid>::Type objects;
   sp->IntersectWithPlane(objects,plane,intern);
 
   SEXP R_ellipses;
@@ -379,7 +379,7 @@ STGM::Spheroids convert_C_Spheroids(SEXP R_spheroids)
   return spheroids;
 }
 
-SEXP convert_R_Ellipses_trunc(STGM::IntersectorSpheroids &objects) {
+SEXP convert_R_Ellipses_trunc(STGM::Intersectors<STGM::CSpheroid>::Type &objects) {
   SEXP R_resultlist;
   PROTECT(R_resultlist = allocVector(VECSXP, objects.size()) );
 
@@ -413,7 +413,7 @@ SEXP convert_R_Ellipses_trunc(STGM::IntersectorSpheroids &objects) {
  * @param objects Intersection object
  * @return R ellipses
  */
-SEXP convert_R_Ellipses_all(STGM::IntersectorSpheroids &objects) {
+SEXP convert_R_Ellipses_all(STGM::Intersectors<STGM::CSpheroid>::Type &objects) {
   int nProtected=0, ncomps=5, dim=2;
 
   SEXP R_resultlist;
@@ -542,19 +542,19 @@ SEXP UpdateIntersections(SEXP Rs, SEXP R_box) {
     if( !std::strcmp(name, "prolate" ) || !std::strcmp(name, "oblate" ) || !std::strcmp(name, "spheroid" )) {
         for(int k=0;k<length(Rs);k++) {
                 STGM::CSpheroid sp = convert_C_Spheroid(VECTOR_ELT(Rs,k));
-                STGM::IntersectorSpheroid intersector(sp , box.m_size );
+                STGM::Intersector<STGM::CSpheroid> intersector(sp , box.m_size );
                 INTEGER(R_ret)[k] = intersector.TestBoxIntersection(planes);
         }
     } else if(!std::strcmp(name, "cylinder" )) {
         for(int k=0;k<length(Rs);k++) {
                 STGM::CCylinder sp = convert_C_Cylinder(VECTOR_ELT(Rs,k));
-                STGM::IntersectorCylinder intersector(sp , box.m_size );
+                STGM::Intersector<STGM::CCylinder> intersector(sp , box.m_size );
                 INTEGER(R_ret)[k] = intersector.TestBoxIntersection(planes);
         }
     } else if(!std::strcmp(name, "sphere" )) {
       for(int k=0;k<length(Rs);k++) {
                 STGM::CSphere sp = convert_C_Sphere(VECTOR_ELT(Rs,k));
-                STGM::IntersectorSphere intersector(sp , box.m_size );
+                STGM::Intersector<STGM::CSphere> intersector(sp , box.m_size );
                 INTEGER(R_ret)[k] = intersector.TestBoxIntersection(planes);
       }
     } else {
@@ -598,7 +598,7 @@ SEXP convert_R_EllipsoidSystem( STGM::Spheroids &spheroids, STGM::CBox3 &box) {
     // projection
     STGM::CEllipse2 ellipse = spheroid.spheroidProjection();
     // check intersection
-    STGM::IntersectorSpheroid intersector(spheroid , box.m_size );
+    STGM::Intersector<STGM::CSpheroid> intersector(spheroid , box.m_size );
     Rboolean interior = (Rboolean) TRUE;
     for(size_t j=0; j<planes.size() ; ++j) {
          if( intersector(planes[j])) {
@@ -814,16 +814,14 @@ void STGM::CEllipsoidSystem::simConstEllipsoidSys(R_Calldata d){
            m3 = m_box.m_size[2] +(m_box.m_center[2]-m_box.m_extent[2]);
 
     // shape distribution
-    rdist2_t rshape;
     double s2 = 0, s = 1;
     const char *fname_shape = GET_NAME(d,1);
     double s1 = asReal(VECTOR_ELT(VECTOR_ELT(d->args,1),0));
+    rdist2_t rshape = &rconst;
     if ( !std::strcmp(fname_shape, "rbeta" )) {
         rshape = &rbeta;
         s2 = asReal(VECTOR_ELT(VECTOR_ELT(d->args,1),1));
-     } else if(!std::strcmp(fname_shape,"const")) {
-        rshape = &rconst;
-     }
+    }
 
     double theta = 0, a = 0, phi = 0, r = 0;
     // size is always constant here, no perfect simulation
@@ -987,6 +985,7 @@ void STGM::CEllipsoidSystem::simEllipsoidSys(R_Calldata d) {
      PutRNGstate();
 }
 
+
 SEXP DigitizeEllipseIntersections(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_delta)
 {
    checkPtr(ext, spheroid_type_tag);
@@ -995,7 +994,7 @@ SEXP DigitizeEllipseIntersections(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_delta)
    STGM::CPlane plane( n , asReal(R_z));
 
    if(PL>100) Rprintf("Intersect with plane: %d \n", sp->refObjects().size());
-   STGM::IntersectorSpheroids objects;
+   STGM::Intersectors<STGM::CSpheroid>::Type objects;
    sp->IntersectWithPlane(objects,plane,0);
 
    if(PL>100) Rprintf("done: %d \n", objects.size());
@@ -1005,7 +1004,7 @@ SEXP DigitizeEllipseIntersections(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_delta)
    PROTECT(R_W = allocMatrix(INTSXP,nPix,nPix));
 
    if(PL>100) Rprintf("Digitize: nPix: %d, delta: %f \n",nPix,REAL(R_delta)[0]);
-   STGM::digitizeSpheroidIntersections(objects, INTEGER(R_W),nPix,REAL(R_delta)[0]);
+   digitize(objects, INTEGER(R_W),nPix,REAL(R_delta)[0]);
 
    UNPROTECT(1);
    return R_W;
@@ -1018,9 +1017,9 @@ SEXP DigitizeEllipseIntersections(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_delta)
  * @param objects
  * @param plane
  */
-void STGM::CEllipsoidSystem::IntersectWithPlane(STGM::IntersectorSpheroids &objects, STGM::CPlane &plane, int intern)
+void STGM::CEllipsoidSystem::IntersectWithPlane(STGM::Intersectors<STGM::CSpheroid>::Type &objects, STGM::CPlane &plane, int intern)
 {
-  int i,j;
+  int i=0,j=0;
   switch(plane.idx()) {
       case 0: i=1; j=2; break; // YZ
       case 1: i=0; j=2; break; // XZ
@@ -1031,7 +1030,7 @@ void STGM::CEllipsoidSystem::IntersectWithPlane(STGM::IntersectorSpheroids &obje
   if(intern) {
       CWindow win(m_box.m_size[i],m_box.m_size[j]);
       for(size_t i=0; i<m_spheroids.size(); ++i) {
-           STGM::IntersectorSpheroid intersector( m_spheroids[i], plane, m_box.m_size);
+           STGM::Intersector<STGM::CSpheroid> intersector( m_spheroids[i], plane, m_box.m_size);
            if(intersector.FindIntersection()) {
                if(intersector.getEllipse().isInWindow(win))
                  objects.push_back( intersector );
@@ -1039,7 +1038,7 @@ void STGM::CEllipsoidSystem::IntersectWithPlane(STGM::IntersectorSpheroids &obje
        }
   } else {
       for(size_t i=0; i<m_spheroids.size(); ++i) {
-          STGM::IntersectorSpheroid intersector( m_spheroids[i], plane, m_box.m_size);
+          STGM::Intersector<STGM::CSpheroid> intersector( m_spheroids[i], plane, m_box.m_size);
           if(intersector.FindIntersection()) {
             objects.push_back( intersector );
           }

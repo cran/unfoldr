@@ -79,7 +79,7 @@ SEXP UpdateIntersectionsCylinder(SEXP R_cylinder, SEXP R_cluster_ids, SEXP R_box
 
     for(int k=0;k<length(R_clust_id);k++) {
         STGM::CCylinder sp = convert_C_Cylinder(VECTOR_ELT(R_cylinder,k));
-        STGM::IntersectorCylinder intersector(sp , box.m_size );
+        STGM::Intersector<STGM::CCylinder> intersector(sp , box.m_size );
         for(size_t j=0; j<planes.size() ; ++j) {
             if( intersector(planes[j])) {
               sp.interior()=0;
@@ -189,15 +189,13 @@ void STGM::CCylinderSystem::simConstCylinderSys(R_Calldata d){
           m3 = m_box.m_size[2] +(m_box.m_center[2]-m_box.m_extent[2]);
 
    // shape distribution, only constant or rbeta
-   rdist2_t rshape;
    double s2 = 0, s = 1;
    const char *fname_shape = GET_NAME(d,1);
    double s1 = asReal(VECTOR_ELT(VECTOR_ELT(d->args,1),0));
+   rdist2_t rshape = &rconst;
    if ( !std::strcmp(fname_shape, "rbeta" )) {
      rshape = &rbeta;
      s2 = asReal(VECTOR_ELT(VECTOR_ELT(d->args,1),1));
-   } else if(!std::strcmp(fname_shape,"const")) {
-     rshape = &rconst;
    }
 
    double theta = 0, phi = 0, r = 0;
@@ -459,9 +457,9 @@ void STGM::CCylinderSystem::simCylinderSys(R_Calldata d) {
      PutRNGstate();
 }
 
-void STGM::CCylinderSystem::IntersectWithPlane(IntersectorCylinders &objects, CPlane &plane, int intern)
+void STGM::CCylinderSystem::IntersectWithPlane(STGM::Intersectors<STGM::CCylinder>::Type &objects, CPlane &plane, int intern)
 {
-  int i,j;
+  int i=0,j=0;
   switch(plane.idx()) {
         case 0: i=1; j=2; break; // YZ
         case 1: i=0; j=2; break; // XZ
@@ -470,7 +468,7 @@ void STGM::CCylinderSystem::IntersectWithPlane(IntersectorCylinders &objects, CP
   CWindow win(m_box.m_size[i],m_box.m_size[j]);
 
   for(size_t i=0; i<m_cylinders.size(); ++i) {
-         IntersectorCylinder intersector(m_cylinders[i], plane, m_box.m_size);
+         STGM::Intersector<STGM::CCylinder> intersector(m_cylinders[i], plane, m_box.m_size);
          if(intersector.TestIntersection()) {
              intersector.FindIntersection();
              if(intersector.getType() == CIRCLE_CAPS ||
@@ -572,7 +570,7 @@ SEXP convert_R_Cylinder( STGM::CCylinder &cyl, STGM::LateralPlanes &planes, STGM
   COPY_C2R_MATRIX(M,R_rotM,dim);
 
   // check intersection
-  STGM::IntersectorCylinder intersector(cyl, box.m_size );
+  STGM::Intersector<STGM::CCylinder> intersector(cyl, box.m_size );
   Rboolean interior = (Rboolean) TRUE;
   for(size_t j=0; j<planes.size() ; ++j) {
        if( intersector(planes[j])) {
@@ -631,14 +629,14 @@ SEXP convert_R_Cylinders( STGM::Cylinders &cyls, STGM::CBox3 &box) {
 }
 
 
-
 SEXP CDigitizeCylinderIntersections(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_delta)
 {
   checkPtr(ext, cylinder_type_tag);
   STGM::CVector3d n(REAL(R_n)[0],REAL(R_n)[1],REAL(R_n)[2]);
   STGM::CPlane plane( n , asReal(R_z));
 
-  STGM::IntersectorCylinders objects;
+  //STGM::IntersectorCylinders objects;
+  STGM::Intersectors<STGM::CCylinder>::Type objects;
   STGM::CCylinderSystem *cyls = static_cast<STGM::CCylinderSystem *>(getExternalPtr(ext));
   cyls->IntersectWithPlane(objects,plane,0);
 
@@ -648,7 +646,7 @@ SEXP CDigitizeCylinderIntersections(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_delta)
   PROTECT(R_W = allocMatrix(INTSXP,nPix,nPix));
 
   Rprintf("Digitize: nPix: %d, delta: %f \n",nPix,REAL(R_delta)[0]);
-  digitizeCylinderIntersections(objects, INTEGER(R_W),nPix,asReal(R_delta));
+  digitize(objects,INTEGER(R_W),nPix,asReal(R_delta));
 
   UNPROTECT(1);
   return R_W;

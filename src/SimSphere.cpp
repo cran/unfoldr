@@ -14,7 +14,7 @@ static int PL = 0;
 #define MAX_ITER 100
 
 SEXP convert_R_SphereSystem(STGM::Spheres& spheres, STGM::CBox3 &box);
-SEXP convert_R_Circles(STGM::IntersectorSpheres& objects);
+SEXP convert_R_Circles(STGM::Intersectors<STGM::CSphere>::Type& objects);
 STGM::CSphere convert_C_Sphere(SEXP R_sphere);
 STGM::Spheres convert_C_Spheres(SEXP R_spheres);
 
@@ -274,7 +274,7 @@ SEXP SimulateSpheresAndIntersect(SEXP R_param, SEXP R_cond) {
   double dz = asReal(getListElement(R_cond,"dz"));
   STGM::CPlane plane(STGM::CVector3d(0,0,1), dz);
 
-  STGM::IntersectorSpheres objects;
+  STGM::Intersectors<STGM::CSphere>::Type objects;
   int intern = 0;
   if(!isNull(getListElement(R_cond,"intern")))
     intern = asInteger(AS_INTEGER(getListElement(R_cond,"intern")));
@@ -307,7 +307,7 @@ SEXP IntersectSphereSystem(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_intern) {
   STGM::CBoolSphereSystem *sp = static_cast<STGM::CBoolSphereSystem *>(getExternalPtr(ext));
   if(PL>100) Rprintf("Intersect with plane: %d \n", sp->refObjects().size());
 
-  STGM::IntersectorSpheres objects;
+  STGM::Intersectors<STGM::CSphere>::Type objects;
   int intern = asInteger(AS_INTEGER(R_intern));
   sp->IntersectWithPlane(objects,plane,intern);
 
@@ -315,7 +315,7 @@ SEXP IntersectSphereSystem(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_intern) {
 }
 
 
-void STGM::CBoolSphereSystem::IntersectWithPlane(STGM::IntersectorSpheres &objects, STGM::CPlane &plane, int intern)
+void STGM::CBoolSphereSystem::IntersectWithPlane(STGM::Intersectors<STGM::CSphere>::Type &objects, STGM::CPlane &plane, int intern)
 {
   /// Intersect only objects fully inside the observation window
    int i=0,j=0;
@@ -330,7 +330,7 @@ void STGM::CBoolSphereSystem::IntersectWithPlane(STGM::IntersectorSpheres &objec
    CWindow win(m_box.m_size[i],m_box.m_size[j]);
 
    for(size_t i=0; i<m_spheres.size(); ++i) {
-        STGM::IntersectorSphere intersector( m_spheres[i], plane, m_box.m_size);
+       STGM::Intersector<STGM::CSphere> intersector( m_spheres[i], plane, m_box.m_size);
         if(intersector.FindIntersection()) {
           if(intersector.getCircle().isInWindow(win))
               objects.push_back( intersector );
@@ -373,7 +373,7 @@ SEXP convert_R_SphereSystem(STGM::Spheres& spheres, STGM::CBox3 &box) {
   {
     STGM::CSphere &sphere = spheres[k];
 
-    STGM::IntersectorSphere intersector(sphere, box.m_size);
+    STGM::Intersector<STGM::CSphere> intersector(sphere, box.m_size);
     Rboolean interior = (Rboolean) TRUE;
     for(size_t j=0; j<planes.size() ; ++j) {
          if( intersector(planes[j])) {
@@ -441,7 +441,7 @@ STGM::Spheres convert_C_Spheres(SEXP R_spheres) {
 }
 
 
-SEXP convert_R_Circles(STGM::IntersectorSpheres & objects) {
+SEXP convert_R_Circles(STGM::Intersectors<STGM::CSphere>::Type & objects) {
   int ncomps=3;
 
   SEXP R_resultlist = R_NilValue;

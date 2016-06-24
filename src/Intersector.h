@@ -13,57 +13,7 @@
 namespace STGM
 {
 
-  /**
-    * @brief Digitizer
-    */
 
-   template<class T>
-   class CDigitizer
-   {
-    public:
-      CDigitizer(int *w, int nrow, int ncol, double delta) :
-        m_w(w), m_nrow(nrow), m_ncol(ncol), m_delta(delta),
-        x(STGM::CPoint2d(0,0)), y(STGM::CPoint2d(0,0))
-      {
-        /** safer: initialize */
-        for(int i=0;i<nrow*ncol;i++) m_w[i]=0;
-        m_nr = m_nrow-1;
-        m_nc = m_ncol-1;
-        m_d  = 0.5*m_delta-1e-6;
-      }
-
-      virtual ~CDigitizer() {};
-
-      void start(T& obj)
-      {
-         //Rprintf("thread num: %d\n",omp_get_thread_num());
-
-         std::vector<STGM::CPoint2d> p = obj.getMinMaxPoints();
-         x=p[0]; y=p[1];
-
-         //Rprintf("[ %f %f ], [ %f %f ], \n",x[0],x[1],y[0],y[1]);
-
-         STGM::CBoundingRectangle &br = obj.getBoundingRectangle();
-         br.m_ymin=std::max(0,(int)((y[0]+m_d)/m_delta)); // y-coordinate is related to row number
-         br.m_xmin=std::max(0,(int)((x[0]+m_d)/m_delta)); // x-coordinate is related to col number
-         br.m_ymax=std::min(m_nr,(int)((y[1]-m_d)/m_delta));
-         br.m_xmax=std::min(m_nc,(int)((x[1]-m_d)/m_delta));
-
-         for(int i=br.m_ymin;i<(br.m_ymax+1);i++) {
-             for(int j=br.m_xmin;j<(br.m_xmax+1);j++) {
-                 /** change i and j for column/row major order */
-                 if(!m_w[i+j*m_nrow])
-                   if(obj.isInside((j+0.5)*m_delta,(i+0.5)*m_delta))
-                       m_w[i+j*m_nrow]=1;
-             }
-         }
-      }
-
-    private:
-      int *m_w, m_nr, m_nc, m_nrow, m_ncol;
-      double m_delta, m_d;
-      STGM::CPoint2d x,y;
-   };
 
   // Information about the intersection set
   enum IntersectionType  {
@@ -127,6 +77,7 @@ namespace STGM
     CSpheroid &getSpheroid() { return m_spheroid; }
     const CSpheroid &getSpheroid() const { return m_spheroid; }
 
+    CGeometry * getObject(int type) { return &m_ellipse; }
 
     /**
      * @brief Only check if Spheroid intersects a given plane
@@ -156,9 +107,6 @@ namespace STGM
       }
       return interior;
     }
-
-
-    void digitize(int *w, int nPix, double delta);
 
   private:
     CSpheroid m_spheroid;
@@ -268,6 +216,13 @@ namespace STGM
       int getType() const { return m_type; };
       int getSide() const { return m_side; };
 
+      CGeometry * getObject(int type) {
+        if(type == CIRCLE_CAPS || type == CIRCLE) {
+             return & m_circle1;
+         } else //if(type == ELLIPSE ||  type == ELLIPSE_ARC ||  type == ELLIPSE_SEGMENT) {
+          return &m_ellipse;
+      }
+
       /**
        * @param plane
        * @return
@@ -352,9 +307,7 @@ namespace STGM
             return interior;
      }
 
-     void digitize(int *w, int nPix, double delta);
-
-    private:
+     private:
       CCylinder m_cylinder;
       CPlane m_plane;
 
@@ -370,25 +323,65 @@ namespace STGM
 
     };
 
+
+    /**
+     * @brief Digitizer
+     */
+     class CDigitizer
+     {
+      public:
+        CDigitizer( int *w, int nrow, int ncol, double delta) :
+          m_w(w), m_nrow(nrow), m_ncol(ncol), m_delta(delta),
+          x(STGM::CPoint2d(0,0)), y(STGM::CPoint2d(0,0))
+        {
+          /** safer: initialize */
+          for(int i=0;i<nrow*ncol;i++) m_w[i]=0;
+          m_nr = m_nrow-1;
+          m_nc = m_ncol-1;
+          m_d  = 0.5*m_delta-1e-6;
+        }
+
+        virtual
+        ~CDigitizer() {};
+
+        void start(STGM::CGeometry *obj) {
+           PointVector2d p = obj->getMinMaxPoints();
+           x=p[0]; y=p[1];
+
+           STGM::CBoundingRectangle br;
+           br.m_ymin=std::max(0,(int)((y[0]+m_d)/m_delta)); // y-coordinate is related to row number
+           br.m_xmin=std::max(0,(int)((x[0]+m_d)/m_delta)); // x-coordinate is related to col number
+           br.m_ymax=std::min(m_nr,(int)((y[1]-m_d)/m_delta));
+           br.m_xmax=std::min(m_nc,(int)((x[1]-m_d)/m_delta));
+
+           for(int i=br.m_ymin;i<(br.m_ymax+1);i++) {
+               for(int j=br.m_xmin;j<(br.m_xmax+1);j++) {
+                   /** change i and j for column/row major order */
+                   if(!m_w[i+j*m_nrow])
+                     if(obj->isInside((j+0.5)*m_delta,(i+0.5)*m_delta))
+                         m_w[i+j*m_nrow]=1;
+               }
+           }
+        }
+
+      private:
+        int *m_w, m_nr, m_nc, m_nrow, m_ncol;
+        double m_delta, m_d;
+        STGM::CPoint2d x,y;
+     };
+
      /** some type definitions */
      template<class T>
      struct Intersectors { typedef typename std::vector< Intersector<T> > Type;  };
 
-     /// to be specialized in file Intersector.cpp
-     template< class T>
-     void digitize(T &objects, int *w, int nPix, double delta) {;}
-
-
-    /**
-       * @brief Digitize cylinder intersestions
-       *
-       * @param objects
-       * @param w
-       * @param nPix
-       * @param delta
-       */
-      //void digitizeCylinderIntersections(IntersectorCylinders &objects, int *w, int nPix, double delta);
-      //void digitizeSpheroidIntersections(IntersectorSpheroids &objects, int *w, int nPix, double delta);
+     template<class T>
+     void digitize(typename STGM::Intersectors<T>::Type &objects, int *w, int nPix, double delta) {
+       int type = 0;
+       STGM::CDigitizer digitizer(w,nPix,nPix,delta);
+       for(size_t k=0;k<objects.size();k++) {
+          digitizer.start(objects[k].getObject(type));
+       }
+     }
 
 } /* namespace STGM */
 

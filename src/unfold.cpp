@@ -27,7 +27,7 @@
 #define DivPI 1.27323954473516276486
 
 /**  elliptic integral second kind */
-extern double elle_int2(double, double);
+extern double elleptint(double, double);
 
 template<int DIM>
 struct  CArray {
@@ -121,8 +121,9 @@ extern_findIndex(double *x, double *v, int *n, int *idx) {
 
 struct K_Oblate_s {
   K_Oblate_s(double *size, double *angle, double *shape) :
-    A(size), alpha(angle), S(shape),
-    a(size), Theta(angle), s(shape)
+    m_A(size), m_alpha(angle), m_S(shape),
+    m_a(size), m_Theta(angle), m_s(shape),
+    t1(0),t2(0),B(0),tmpS(0)
   {};
 
   ~K_Oblate_s() {};
@@ -144,7 +145,7 @@ struct K_Oblate_s {
           warning(_("K_Oblate_s(): inf produced"));
         }
 
-        K1=elle_int2(phi,B);
+        K1=elleptint(phi,B);
      }
 
      if(s<S && S<=tmpS) {
@@ -152,27 +153,27 @@ struct K_Oblate_s {
         if(!R_FINITE(phi)) {
             error(_("K_Oblate_s(): NaN produced"));
         }
-        K2=elle_int2(phi,B);
+        K2=elleptint(phi,B);
       } //else if(S<=s) K2=0;
-     else if(S>tmpS) K2=elle_int2(M_PI_2,B);
+     else if(S>tmpS) K2=elleptint(M_PI_2,B);
 
      return MIN(K1,K2);
   }
 
   inline double operator()(int i, int j, int k,int l, int m, int n)  {
-    if(a[i+1]<A[l+1] || a[i+1]<A[l])
+    if(m_a[i+1]<m_A[l+1] || m_a[i+1]<m_A[l])
       return 0;
 
-    B=sin(Theta[j+1])*sqrt(1.0-SQR(s[k+1]));
-    tmpS=s[k+1]/sqrt(SQR(s[k+1])*SQR(sin(Theta[j+1]))+SQR(cos(Theta[j+1])));
-    t1=DivPI*(a[i+1]-sqrt(SQR(a[i+1])-SQR(A[l+1])));
-    t2=DivPI*(a[i+1]-sqrt(SQR(a[i+1])-SQR(A[l])));
+    B=sin(m_Theta[j+1])*sqrt(1.0-SQR(m_s[k+1]));
+    tmpS=m_s[k+1]/sqrt(SQR(m_s[k+1])*SQR(sin(m_Theta[j+1]))+SQR(cos(m_Theta[j+1])));
+    t1=DivPI*(m_a[i+1]-sqrt(SQR(m_a[i+1])-SQR(m_A[l+1])));
+    t2=DivPI*(m_a[i+1]-sqrt(SQR(m_a[i+1])-SQR(m_A[l])));
 
     double p=
-      t1*K(alpha[m+1],S[n+1],Theta[j+1],s[k+1]) - t2*K(alpha[m],   S[n],   Theta[j+1], s[k+1])
-    + t1*K(alpha[m],  S[n],  Theta[j+1],s[k+1]) - t2*K(alpha[m+1], S[n+1], Theta[j+1], s[k+1])
-    - t1*K(alpha[m+1],S[n],  Theta[j+1],s[k+1]) + t2*K(alpha[m+1], S[n],   Theta[j+1], s[k+1])
-    - t1*K(alpha[m],  S[n+1],Theta[j+1],s[k+1]) + t2*K(alpha[m],   S[n+1], Theta[j+1], s[k+1]);
+      t1*K(m_alpha[m+1],m_S[n+1],m_Theta[j+1],m_s[k+1]) - t2*K(m_alpha[m],   m_S[n],   m_Theta[j+1], m_s[k+1])
+    + t1*K(m_alpha[m],  m_S[n],  m_Theta[j+1],m_s[k+1]) - t2*K(m_alpha[m+1], m_S[n+1], m_Theta[j+1], m_s[k+1])
+    - t1*K(m_alpha[m+1],m_S[n],  m_Theta[j+1],m_s[k+1]) + t2*K(m_alpha[m+1], m_S[n],   m_Theta[j+1], m_s[k+1])
+    - t1*K(m_alpha[m],  m_S[n+1],m_Theta[j+1],m_s[k+1]) + t2*K(m_alpha[m],   m_S[n+1], m_Theta[j+1], m_s[k+1]);
 
     double ret= fabs(p)<ZERO_TOL ? 0.0 : p;
     if(!R_FINITE(ret) || ISNAN(ret)) {
@@ -182,24 +183,26 @@ struct K_Oblate_s {
   }
 
   /* members */
-   const double *A,*alpha,*S;       // histogram bins, planar
-   const double *a,*Theta,*s;       // histogram bins, spatial
+   const double *m_A,*m_alpha,*m_S;       // histogram bins, planar
+   const double *m_a,*m_Theta,*m_s;       // histogram bins, spatial
 
    double t1,t2,B,tmpS;
 };
 
 struct K_Prolate_s {
    K_Prolate_s(double *size, double *angle, double *shape) :
-    A(size), alpha(angle), S(shape),
-    a(size), Theta(angle), s(shape)
-   {};
+    m_A(size), m_alpha(angle), m_S(shape),
+    m_a(size), m_Theta(angle), m_s(shape),
+    t1(0),t2(0),Z(0),Zroot(0),M(0),tmpS(0)
+   {
+   };
 
    ~K_Prolate_s() {};
 
    double K(double alpha, double S, double Theta, double s)
    {
        double K1=0,K2=0,phi=0,tmp=0,eint=0,div=0;
-       double eint2 = (M>0 ? elle_int2(M_PI_2,M) : M_PI_2);  /* M==0 , if Z==1*/
+       double eint2 = (M>0 ? elleptint(M_PI_2,M) : M_PI_2);  /* M==0 , if Z==1*/
 
        if(!R_FINITE(eint2) || ISNAN(eint2))
           error("KProlate_s(): elliptic integral error.");
@@ -210,10 +213,10 @@ struct K_Prolate_s {
             } else {
                phi = asin(cot(Theta)*tan(alpha));
                if(!ISNAN(phi)) {
-                 eint=elle_int2(phi,M);
+                 eint=elleptint(phi,M);
                } else {
                  warning(_("KPrblate_s(): NaNs produced"));
-                 eint=elle_int2(M_PI_2,M);
+                 eint=elleptint(M_PI_2,M);
                }
             }
             K1 = Zroot*eint;
@@ -231,7 +234,7 @@ struct K_Prolate_s {
                phi=asin(tmp/M);
                if(ISNAN(phi))
                  error(_("K_Prolates_s(): NaNs produced."));
-               eint=elle_int2(phi,M);
+               eint=elleptint(phi,M);
            }
            div = fabs(Z-SQR(S)/SQR(s));
            if(!R_FINITE(div))
@@ -254,22 +257,22 @@ struct K_Prolate_s {
    }
 
    inline double operator()(int i, int j, int k,int l, int m, int n)  {
-     if(a[i+1]<A[l+1] || a[i+1]<A[l])
+     if(m_a[i+1]<m_A[l+1] || m_a[i+1]<m_A[l])
        return 0;
 
-     t1 = DivPI*(a[i+1]-sqrt(SQR(a[i+1])-SQR(A[l+1])));
-     t2 = DivPI*(a[i+1]-sqrt(SQR(a[i+1])-SQR(A[l])));
+     t1 = DivPI*(m_a[i+1]-sqrt(SQR(m_a[i+1])-SQR(m_A[l+1])));
+     t2 = DivPI*(m_a[i+1]-sqrt(SQR(m_a[i+1])-SQR(m_A[l])));
 
-     tmpS = sqrt(SQR(s[k+1])*SQR(cos(Theta[j+1]))+SQR(sin(Theta[j+1])));
-     Z = 1.0+(1/SQR(s[k+1])-1.0)*SQR(sin(Theta[j+1]));
+     tmpS = sqrt(SQR(m_s[k+1])*SQR(cos(m_Theta[j+1]))+SQR(sin(m_Theta[j+1])));
+     Z = 1.0+(1/SQR(m_s[k+1])-1.0)*SQR(sin(m_Theta[j+1]));
      M = sqrt((Z-1.0)/Z);
      Zroot = sqrt(Z);
 
      double p=
-      t1*K(alpha[m+1],S[n+1], Theta[j+1],s[k+1]) - t2*K(alpha[m],   S[n],  Theta[j+1], s[k+1])
-    + t1*K(alpha[m],  S[n],   Theta[j+1],s[k+1]) - t2*K(alpha[m+1], S[n+1],Theta[j+1], s[k+1])
-    - t1*K(alpha[m+1],S[n],   Theta[j+1],s[k+1]) + t2*K(alpha[m+1], S[n],  Theta[j+1], s[k+1])
-    - t1*K(alpha[m],  S[n+1], Theta[j+1],s[k+1]) + t2*K(alpha[m],   S[n+1],Theta[j+1], s[k+1]);
+      t1*K(m_alpha[m+1],m_S[n+1], m_Theta[j+1],m_s[k+1]) - t2*K(m_alpha[m],   m_S[n],  m_Theta[j+1], m_s[k+1])
+    + t1*K(m_alpha[m],  m_S[n],   m_Theta[j+1],m_s[k+1]) - t2*K(m_alpha[m+1], m_S[n+1],m_Theta[j+1], m_s[k+1])
+    - t1*K(m_alpha[m+1],m_S[n],   m_Theta[j+1],m_s[k+1]) + t2*K(m_alpha[m+1], m_S[n],  m_Theta[j+1], m_s[k+1])
+    - t1*K(m_alpha[m],  m_S[n+1], m_Theta[j+1],m_s[k+1]) + t2*K(m_alpha[m],   m_S[n+1],m_Theta[j+1], m_s[k+1]);
 
      double ret= fabs(p)<ZERO_TOL ? 0.0 : p;
      if(!R_FINITE(ret) || ISNAN(ret)) {
@@ -280,8 +283,8 @@ struct K_Prolate_s {
     }
 
    /* members */
-   const double *A,*alpha,*S;       // histogram bins, planar
-   const double *a,*Theta,*s;       // histogram bins, spatial
+   const double *m_A,*m_alpha,*m_S;       // histogram bins, planar
+   const double *m_a,*m_Theta,*m_s;       // histogram bins, spatial
 
    double t1,t2,Z,Zroot,M,tmpS;
 };

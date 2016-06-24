@@ -352,32 +352,5 @@ namespace STGM
 
   }
 
-  template<>
-  void digitize(STGM::Intersectors<STGM::CCylinder>::Type &objects, int *w, int nPix, double delta) {
-    int type = 0;
-
-    for(size_t k=0;k<objects.size();k++) {
-       type = objects[k].getType();
-       //Rprintf("element k %d, type %d \n",k,type);
-       if(type == CIRCLE_CAPS || type == CIRCLE) {
-           STGM::CDigitizer<STGM::CCircle3> digitizer(w,nPix,nPix,delta);
-           digitizer.start(objects[k].getCircle1());
-       } else if(type == ELLIPSE ||
-                 type == ELLIPSE_ARC ||
-                 type == ELLIPSE_SEGMENT) {
-           STGM::CDigitizer<STGM::CEllipse3> digitizer(w,nPix,nPix,delta);
-           digitizer.start(objects[k].getEllipse());
-       }
-    }
-  }
-
-  template<>
-  void digitize(STGM::Intersectors<STGM::CSpheroid>::Type &objects, int *w, int nPix, double delta) {
-    STGM::CDigitizer<STGM::CEllipse2> digitizer(w,nPix,nPix,delta);
-    for(size_t k=0;k<objects.size();k++)
-       digitizer.start(objects[k].getEllipse());
-
-  }
-
 
 } /* namespace STGM */

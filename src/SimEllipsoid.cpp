@@ -1004,7 +1004,7 @@ SEXP DigitizeEllipseIntersections(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_delta)
    PROTECT(R_W = allocMatrix(INTSXP,nPix,nPix));
 
    if(PL>100) Rprintf("Digitize: nPix: %d, delta: %f \n",nPix,REAL(R_delta)[0]);
-   digitize(objects, INTEGER(R_W),nPix,REAL(R_delta)[0]);
+   STGM::digitize<STGM::CSpheroid>(objects,INTEGER(R_W),nPix,asReal(R_delta));
 
    UNPROTECT(1);
    return R_W;

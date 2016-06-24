@@ -1,7 +1,8 @@
-/** @file  GeometricPrimitives.cpp
+/**
+ *  @file  GeometricPrimitives.cpp
+ *  @date  02-14-2014
  *
- *  @date 02-14-2014
- *  @uthor: franke
+ *  @author: M. Baaske
  */
 #define ZERO_TOL 1E-6
 
@@ -574,7 +575,7 @@ namespace STGM {
       return false;
     }
 
-    PointVector CEllipse3::getEllipseExtremePoints()
+    PointVector2d CEllipse3::getEllipseExtremePoints()
     {
          //Rprintf("getEllipseExtremePoints...\n");
          std::vector<STGM::CPoint2d> p;
@@ -664,10 +665,10 @@ namespace STGM {
                   py.push_back(*it);
              }
 
-             PointVector::iterator max_x = std::max_element(py.begin(), py.end(), compareX);
-             PointVector::iterator min_x = std::min_element(py.begin(), py.end(), compareX);
-             PointVector::iterator max_y = std::max_element(py.begin(), py.end(), compareY);
-             PointVector::iterator min_y = std::min_element(py.begin(), py.end(), compareY);
+             PointVector2d::iterator max_x = std::max_element(py.begin(), py.end(), compareX);
+             PointVector2d::iterator min_x = std::min_element(py.begin(), py.end(), compareX);
+             PointVector2d::iterator max_y = std::max_element(py.begin(), py.end(), compareY);
+             PointVector2d::iterator min_y = std::min_element(py.begin(), py.end(), compareY);
 
   #if DEBUG
              Rprintf("sort y...\n");

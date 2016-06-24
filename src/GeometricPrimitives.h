@@ -1,8 +1,11 @@
 /**
  * @file GeomoetricPrimitives.h
+ * @date 2014-02-11
  *
- *  @author: franke
- *  @date  2014-02-11
+ * @brief classes for geometric objects with methods for
+ *        intersection, projection and certain distance definitions
+ *
+ * @author: M. Baaske
  */
 
 #ifndef GEOMETRIC_PRIMITIVES_H_
@@ -15,7 +18,8 @@ extern "C" void ContactRadius(double *u, double *li, double *lj, double *ri, dou
 
 namespace STGM {
 
-  typedef std::vector<STGM::CPoint2d> PointVector;
+  /** some type definitions */
+  typedef std::vector<STGM::CPoint2d> PointVector2d;
   typedef std::vector<STGM::CPoint2d>::iterator PointIterator;
 
   void real_eval(double *a, int *n, double *evalf, int *err);
@@ -25,10 +29,6 @@ namespace STGM {
    * transforms (0,0,1) into vector v
    */
   CMatrix3d RotationMatrixFrom001(CVector3d v);
-
-  /** some type definitions */
-  typedef std::vector<STGM::CPoint2d> PointVector2d;
-
 
   class CWindow
    {
@@ -114,8 +114,9 @@ namespace STGM {
   public:
     CGeometry() {};
     virtual ~CGeometry() {};
-
-    virtual bool isInWindow(CWindow &win) { return false;} ;
+    virtual bool isInWindow(CWindow &win) { return false; };
+    virtual bool isInside(double x, double y) { return false; };
+    virtual PointVector2d getMinMaxPoints() { return PointVector2d(); }
   };
 
    /**
@@ -779,14 +780,14 @@ namespace STGM {
       *
       * @return [min_x,max_x],[min_y,max_y]
       */
-     PointVector getMinMaxPoints();
+     PointVector2d getMinMaxPoints();
 
      /**
       * @brief Minimum/Maximum coordinates of points on the ellipse
       *
       * @return All four points, not sorted
       */
-     PointVector getEllipseExtremePoints();
+     PointVector2d getEllipseExtremePoints();
 
      /**
       * @brief Extreme points on the ellipse

@@ -646,7 +646,7 @@ SEXP CDigitizeCylinderIntersections(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_delta)
   PROTECT(R_W = allocMatrix(INTSXP,nPix,nPix));
 
   Rprintf("Digitize: nPix: %d, delta: %f \n",nPix,REAL(R_delta)[0]);
-  digitize(objects,INTEGER(R_W),nPix,asReal(R_delta));
+  STGM::digitize<STGM::CCylinder>(objects,INTEGER(R_W),nPix,asReal(R_delta));
 
   UNPROTECT(1);
   return R_W;

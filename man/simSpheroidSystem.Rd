@@ -6,7 +6,8 @@
 \usage{
 simSpheroidSystem(theta, lam, size = "const", shape = "const",
   orientation = "rbetaiso", stype = c("prolate", "oblate"), rjoint = NULL,
-  box = list(c(0, 1)), mu = c(0, 1, 0), pl = 0, label = "N")
+  box = list(c(0, 1)), mu = c(0, 0, 1), perfect = TRUE, pl = 0,
+  label = "N")
 }
 \arguments{
 \item{theta}{simulation parameters}
@@ -25,7 +26,9 @@ simSpheroidSystem(theta, lam, size = "const", shape = "const",
 
 \item{box}{simulation box}
 
-\item{mu}{main orientation axis, \code{mu=c(0,1,0)} (default)}
+\item{mu}{main orientation axis, \code{mu=c(0,0,1)} (default)}
+
+\item{perfect}{logical: \code{perfect=TRUE} (default) simulate perfect}
 
 \item{pl}{optional: print level}
 
@@ -40,23 +43,23 @@ Simulation of Poisson spheroid system
 \details{
 The function simulates a Poisson spheroid system according to the supplied
 simulation parameter \code{theta} in a predefined simulation box.
-The argument \code{size} is of type string and denotes the major-axis length random generating 
+The argument \code{size} is of type string and denotes the major-axis length random generating
 function name.
 
 Further the function simulates either \code{stype}="prolate" or \code{stype}='oblate' spheroids.
 For the directional orientation of the spheroid's major-axis one has the choice of a uniform
-(\code{runifdir}), isotropic random planar (\code{rbetaiso}, see reference) or von Mises-Fisher 
-(\code{rvMisesFisher}) distribution. The simulation box is a list containing of vector arguments 
-which correspond to the lower and upper points in each direction. If the argument \code{box} has 
+(\code{runifdir}), isotropic random planar (\code{rbetaiso}, see reference) or von Mises-Fisher
+(\code{rvMisesFisher}) distribution. The simulation box is a list containing of vector arguments
+which correspond to the lower and upper points in each direction. If the argument \code{box} has
 only one element, i.e. \code{list(c(0,1)}, the same extent is used for the other dimensions.
 If \code{rjoint} names a joint random generating function then argument \code{size} is ignored.
-For the purpose of exact simulation setting \code{size} equal to \code{rbinorm} declares a bivarite 
-size-shape distribution which leads to a log normal distributed semi-major axis \code{a} and a scaled 
-semi-minor axis length \code{c}. If \eqn{[X,Y]} follow a bivariate normal distribution with correlation parameter 
+For the purpose of exact simulation setting \code{size} equal to \code{rbinorm} declares a bivarite
+size-shape distribution which leads to a log normal distributed semi-major axis \code{a} and a scaled
+semi-minor axis length \code{c}. If \eqn{[X,Y]} follow a bivariate normal distribution with correlation parameter
 \eqn{\rho} then \eqn{a=exp(x)} defines the sample semi-major axis length together with the scaled semi-minor
-axis length \eqn{c=a*s} and shape parameter set to \eqn{s=1/(1+exp(-y))}. The parameter \eqn{\rho} defines 
-the degree of correlation between the semi-axes lengths which must be provided as part of the list of simulation 
-parameters \code{theta}. The method of exact simulation is tailored to the above described model. For a general 
+axis length \eqn{c=a*s} and shape parameter set to \eqn{s=1/(1+exp(-y))}. The parameter \eqn{\rho} defines
+the degree of correlation between the semi-axes lengths which must be provided as part of the list of simulation
+parameters \code{theta}. The method of exact simulation is tailored to the above described model. For a general
 approach please see the given reference below. Other (univariate)  major-axis lengths types include the beta,
 gamma, lognormal and uniform distribution where the shape factor which determines the minor-axis length either
 follows a beta distribution or is set to a constant. Despite the case of constant size simulations all other
@@ -158,7 +161,7 @@ S <- simSpheroidSystem(theta,lam,size="rbinorm",orientation="rbetaiso",box=box,p
 \references{
 \itemize{
 	\item{} {Ohser, J. and Schladitz, K. 3D images of materials structures Wiley-VCH, 2009}
-     \item{} {C. Lantu\eqn{\acute{\textrm{e}}}joul. Geostatistical simulation. Models and algorithms. 
+     \item{} {C. Lantu\eqn{\acute{\textrm{e}}}joul. Geostatistical simulation. Models and algorithms.
 					Springer, Berlin, 2002. Zbl 0990.86007}
 	  }
 }

@@ -32,12 +32,12 @@ getSphereSystem <- function(S) {
 #'
 #' @param S      sphere system
 #' @param pl	 print level
-#' @return		 \code{NULL} 
+#' @return		 \code{NULL}
 setupSphereSystem <- function(S,pl=0) {
 	if(!(class(attr(S,"eptr"))=="externalptr"))
 		warning("'S' has no external pointer attribute, thus we set one.")
-	
-	box <- attr(S,"box")	
+
+	box <- attr(S,"box")
 	if(length(box)==0 || !is.list(box))
 		stop("Expected argument 'box' as list type.")
 	if(length(box)==1)
@@ -65,30 +65,31 @@ setupSphereSystem <- function(S,pl=0) {
 #' the other dimensions. The argument \code{pl} denotes the print level of information during simulation.
 #' Currently, only \code{pl=0} for no output and \code{pl}>100 is implemented. Argument \code{cond$rdist} is of
 #' type string naming the (user defined) radii random generating function.
-#' Setting \code{size} equal to 'rlnorm' generates log normally distributed radii for a stationary Poisson 
-#' ball system according to a general approach of perfect simulation (see reference below). Other distributions 
+#' Setting \code{size} equal to 'rlnorm' generates log normally distributed radii for a stationary Poisson
+#' ball system according to a general approach of perfect simulation (see reference below). Other distributions
 #' currently available are the beta, gamma and uniform distribution.
-#' 
+#'
 #' @param theta  simulation parameters
 #' @param lam    mean number of spheres per unit volume
-#' @param rdist  string, radii random generating function name
-#' @param box 	 simualtion box
-#' @param pl 	 print level
-#' @param label  some character as a label, 'N' (default)
+#' @param rdist   string, radii random generating function name
+#' @param box 	  simualtion box
+#' @param perfect logical: \code{perfect=TRUE} (default) simulate perfect
+#' @param pl 	  print level
+#' @param label   some character as a label, 'N' (default)
 #'
 #' @return list of class \code{spheres} if \code{pl}>100 or empty list
 #'
 #' @references
-#'	\itemize{		
-#'    \item{} {C. Lantu\eqn{\acute{\textrm{e}}}joul. Geostatistical simulation. Models and algorithms. 
+#'	\itemize{
+#'    \item{} {C. Lantu\eqn{\acute{\textrm{e}}}joul. Geostatistical simulation. Models and algorithms.
 #'             Springer, Berlin, 2002. Zbl 0990.86007}
 #' 	 }
 #' @examples
 #'  theta <- list("meanlog"=-2.5,"sdlog"=0.2)
 #'  S <- simSphereSystem(theta,lam=1000,rdist="rlnorm",pl=101)
-simSphereSystem <- function(theta,lam,rdist,box=list(c(0,1)), pl=0, label="N") {
+simSphereSystem <- function(theta,lam,rdist,box=list(c(0,1)),perfect=TRUE, pl=0, label="N") {
 	theta <- list("lam"=lam,"radii"=theta)
-	if(!is.numeric(lam) || !(lam>0) ) 
+	if(!is.numeric(lam) || !(lam>0) )
 		stop("Expected 'lam' as non-negative numeric argument")
 	if(!is.list(theta))
 		stop("Expected 'theta' as list of named arguments.")
@@ -98,12 +99,13 @@ simSphereSystem <- function(theta,lam,rdist,box=list(c(0,1)), pl=0, label="N") {
 	if(length(box)==0 || !is.list(box))
 		stop("Expected 'box' as list.")
 	if(length(box)==1)
-		box <- rep(box[1],3)	
+		box <- rep(box[1],3)
 	if(is.null(names(box)) || !(names(box) %in% c("xrange","yrange","zrange")))
 		names(box) <- c("xrange","yrange","zrange")
-	
+
 	cond <- list("rdist"=rdist,"box"=box, "pl"=pl,
-			      "rho"=.GlobalEnv, "label"=label)
+			      "rho"=.GlobalEnv, "perfect"=as.integer(perfect),
+				  "label"=label)
 
 	if(cond$rdist=="const") {
 		structure(.Call(C_SphereSystem, theta, cond),box = box)
@@ -132,8 +134,8 @@ simSphereSystem <- function(theta,lam,rdist,box=list(c(0,1)), pl=0, label="N") {
 #'
 #' @param S 		list of spheres, see \code{\link{simSphereSystem}}
 #' @param d 		distance of the intersecting xy-plane to the origin
-#' @param intern 	\code{intern=FALSE} (default) return all sections otherwise 
-#' 					only those which have their centers inside the intersection window 
+#' @param intern 	\code{intern=FALSE} (default) return all sections otherwise
+#' 					only those which have their centers inside the intersection window
 #'
 #' @return  vector of circle radii
 planarSection <- function(S,d,intern=FALSE) {

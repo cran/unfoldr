@@ -5,13 +5,15 @@
  *  @author: M. Baaske
  */
 
-#include <vector>
+//#include <vector>
 
-#include "directions.h"
 #include "SimCylinder.h"
+#include "directions.h"
 
 static SEXP cylinder_type_tag;
 static int PL = 0;
+
+using namespace std;
 
 #define COPY_C2R_MATRIX(M,R,DIM)                  \
 do {                                              \
@@ -258,7 +260,7 @@ void STGM::CCylinderSystem::simSysJoint(R_Calldata d) {
      for (size_t niter=0; niter<num; niter++) {
          Reval = R_tryEval(d->call,d->rho,&err);
          if(!err) {
-            h=asReal(getListElement(Reval,"h"));
+            h=2.0*asReal(getListElement(Reval,"h")); 		// simulate half length of cylinder !
             r=asReal(getListElement(Reval,"radius"));
             theta=asReal(getListElement(Reval,"theta"));
             phi=asReal(getListElement(Reval,"phi"));
@@ -308,14 +310,15 @@ void STGM::CCylinderSystem::simBivariate(R_Calldata d) {
   CVector3d u;
   double x=0,y=0,h=0,s=1,phi=0,theta=0;
 
-  int k=0;
   double r=0;
+  int k=0, perfect=d->isPerfect;
+
   for (size_t niter=0; niter<num; niter++)
   {
       /* sample major semi-axis a, shorter semi-axis is: c=a*s */
       rbinorm(mx,sdx,my,sdy,rho,x,y);
       s=1.0/(1.0+exp(-y));
-      h=exp(x);
+      h=2.0*exp(x);
 
       /* sample orientation */
       if(kappa<1e-8)
@@ -323,18 +326,19 @@ void STGM::CCylinderSystem::simBivariate(R_Calldata d) {
       else rOhserSchladitz(u.ptr(),m_mu.ptr(),kappa,theta,phi);
 
       /* sample positions conditionally of radii distribution */
-      sample_k(p,&k);
-      r=rlnorm(mx+k*sdx2,sdx);
-      if(m_maxR<r) m_maxR=r;
-
-      if(!R_FINITE(r))
-        warning(_("simEllipsoidSysBivariat(): Some NA/NaN, +/-Inf produced"));
-
+      if(perfect) {
+    	  sample_k(p,&k);
+    	  r=rlnorm(mx+k*sdx2,sdx);
+    	  if(m_maxR<r)
+    		  m_maxR=r;
+    	  if(!R_FINITE(r))
+    	    warning(_("simCylinderSysBivariat(): Some NA/NaN, +/-Inf produced"));
+      }
       STGM::CVector3d center(runif(0.0,1.0)*(m_box.m_size[0]+2*r)+(m_box.m_low[0]-r),
                              runif(0.0,1.0)*(m_box.m_size[1]+2*r)+(m_box.m_low[1]-r),
                              runif(0.0,1.0)*(m_box.m_size[2]+2*r)+(m_box.m_low[2]-r));
 
-       m_cylinders.push_back(STGM::CCylinder(center,u,h,h*s,theta,phi,r,niter+1,label) );
+       m_cylinders.push_back(STGM::CCylinder(center,u,h,0.5*h*s,theta,phi,r,niter+1,label) );
    }
    PutRNGstate();
 
@@ -413,12 +417,12 @@ void STGM::CCylinderSystem::simCylinderSys(R_Calldata d) {
 
      /* loop over all */
      CVector3d u;
-     int k = 0;
+     int k = 0,perfect = d->isPerfect;
      double h=0,                // cylinder hight
             theta=0, phi=0,     // random direction angles
             r=0;                // perfect simulation radius
      for (size_t niter=0; niter<num; niter++)  {
-         h = rdist(p1,p2);
+         h = 2.0*rdist(p1,p2);
          s = rshape(s1,s2);
 
          /* direction */
@@ -441,18 +445,21 @@ void STGM::CCylinderSystem::simCylinderSys(R_Calldata d) {
         }
 
          /* sample positions conditionally of radii distribution */
-         sample_k(p,&k);
-         r=rdist(p1+k*sd2,sd2);
-         if(m_maxR<r) m_maxR=r;
-
-         if(!R_FINITE(r))
-           warning(_("simCylinderSys: Some NA/NaN, +/-Inf produced"));
+         if(perfect) {
+        	 sample_k(p,&k);
+        	 r=rdist(p1+k*sd2,sd2);
+        	 if(m_maxR<r)
+        		 m_maxR=r;
+        	 if(!R_FINITE(r))
+        	   warning(_("simCylinderSys: Some NA/NaN, +/-Inf produced"));
+         }
 
          STGM::CVector3d center(runif(0.0,1.0)*(m_box.m_size[0]+2*r)+(m_box.m_low[0]-r),
                                 runif(0.0,1.0)*(m_box.m_size[1]+2*r)+(m_box.m_low[1]-r),
                                 runif(0.0,1.0)*(m_box.m_size[2]+2*r)+(m_box.m_low[2]-r));
 
-         m_cylinders.push_back( STGM::CCylinder(center,u,h,h*s,theta,phi,r,niter+1,label) );
+         m_cylinders.push_back( STGM::CCylinder(center,u,h,0.5*h*s,theta,phi,r,niter+1,label) );
+
      }
      PutRNGstate();
 }

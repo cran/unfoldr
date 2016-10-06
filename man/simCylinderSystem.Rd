@@ -6,7 +6,7 @@
 \usage{
 simCylinderSystem(theta, lam, size = "const", shape = "const",
   orientation = "rbetaiso", rjoint = NULL, box = list(c(0, 1)),
-  mu = c(0, 1, 0), pl = 0, label = "N")
+  mu = c(0, 1, 0), perfect = TRUE, pl = 0, label = "N")
 }
 \arguments{
 \item{theta}{simulation parameters}
@@ -16,7 +16,7 @@ simCylinderSystem(theta, lam, size = "const", shape = "const",
 \item{size}{\code{size="const"} (default) or name of random generating function
 a for specific size distribution}
 
-\item{shape}{either \code{shape="const"} as a constant portion of the axis length 
+\item{shape}{either \code{shape="const"} as a constant portion of the axis length
    or \code{shape="rbeta"} as beta distributed shape factor. For a radius distribution
 use your own joint distribution, see details.}
 
@@ -27,6 +27,8 @@ use your own joint distribution, see details.}
 \item{box}{simulation box}
 
 \item{mu}{main orientation axis, \code{mu=c(0,1,0)} (default)}
+
+\item{perfect}{logical: \code{perfect=TRUE} (default) simulate perfect}
 
 \item{pl}{optional: print level}
 
@@ -41,27 +43,27 @@ Simulation of Poisson cylinder system
 \details{
 The function simulates a Poisson (sphero)cylinder system according to the supplied
 simulation parameter \code{theta} in a predefined simulation box.
-The argument \code{size} is of type string and denotes the major-axis length random generating 
+The argument \code{size} is of type string and denotes the major-axis length random generating
 function name.
 
 For the directional orientation of the cylinder axis one has the choice of a uniform
-(\code{runifdir}), isotropic random planar (\code{rbetaiso}, see reference) or von Mises-Fisher 
-(\code{rvMisesFisher}) distribution. The simulation box is a list containing of vector arguments 
-which correspond to the lower and upper points in each direction. If the argument \code{box} has 
+(\code{runifdir}), isotropic random planar (\code{rbetaiso}, see reference) or von Mises-Fisher
+(\code{rvMisesFisher}) distribution. The simulation box is a list containing of vector arguments
+which correspond to the lower and upper points in each direction. If the argument \code{box} has
 only one element, i.e. \code{list(c(0,1)}, the same extent is used for the other dimensions.
 If \code{rjoint="rmulti"} names a joint random generating function then argument \code{size} is ignored
 (see example file "sim.R").
-For the purpose of exact simulation setting \code{size} equal to \code{rbinorm} declares a bivarite 
-size-shape distribution which leads to a log normal distributed cylinder axis (named \code{u}) length
-and a scaled radius \code{r}. If \eqn{[X,Y]} follow a bivariate normal distribution with correlation parameter 
-\eqn{\rho} then \eqn{h=exp(x)} defines the sample cylinder axis length together with the scaled radius
-\eqn{r=h*s} and shape parameter set to \eqn{s=1/(1+exp(-y))}. The parameter \eqn{\rho} defines 
-the degree of correlation between the cylinder axis length and cylinder radius which must be provided
-as part of the list of simulation parameters \code{theta}. The method of exact simulation is tailored
-to the above described model. For a general approach please see the given reference below.
-Other (univariate) cylinder axis lengths types include the beta, gamma, lognormal and uniform distribution 
-where the shape factor to get the radius either follows a beta distribution or is set to a constant. 
-Despite the case of constant size simulations all other simulations are done as perfect simulations. 
+For the purpose of exact simulation setting \code{size} equal to \code{rbinorm} declares a bivarite
+size-shape distribution which leads to a lognormal distributed cylinder axis (named \code{u}) half length h
+(without caps) and a scaled radius \code{r}. If \eqn{[X,Y]} follow a bivariate normal distribution with 
+correlation parameter \eqn{\rho} then \eqn{h=2.0*exp(x)} defines the sample cylinder axis length together
+with the scaled radius \eqn{r=0.5*h*s} and shape parameter set to \eqn{s=1/(1+exp(-y))}. The parameter 
+\eqn{\rho} defines the degree of correlation between the cylinder axis length and cylinder radius which 
+must be provided as part of the list of simulation parameters \code{theta}. The method of exact simulation
+is tailored to the above described model. For a general approach please see the given reference below.
+Other (univariate) cylinder axis lengths types include the beta, gamma, lognormal and uniform distribution
+where the shape factor to get the radius either follows a beta distribution or is set to a constant.
+Despite the case of constant size simulations all other simulations are done as perfect simulations.
 The current implementation does not include routines for unfolding the joint 3d size-shape-orientation
 distribution of cylinders so far. However, this feature this might be provided in a later version.
 
@@ -111,7 +113,7 @@ S <- simCylinderSystem(theta,lam,size="rbinorm",orientation="rbetaiso",box=box,p
 \references{
 \itemize{
 	\item{} {Ohser, J. and Schladitz, K. 3D images of materials structures Wiley-VCH, 2009}
-     \item{} {C. Lantu\eqn{\acute{\textrm{e}}}joul. Geostatistical simulation. Models and algorithms. 
+     \item{} {C. Lantu\eqn{\acute{\textrm{e}}}joul. Geostatistical simulation. Models and algorithms.
 					Springer, Berlin, 2002. Zbl 0990.86007}
 	  }
 }

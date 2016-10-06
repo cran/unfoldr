@@ -14,6 +14,8 @@
 #include "Rmath.h"
 #include "Vector.h"
 
+using namespace std;
+
 static double D1=3.0/14.0, D2=1.0/6.0, D3=9.0/22.0,
               D4=3.0/26.0, D5=0.25*D3, D6=1.5*D4;
 

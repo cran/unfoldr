@@ -9,7 +9,7 @@
 #define BITMAP_RGB "P6"
 
 #include "Utils.h"
-#include <cstring>
+
 #include <R_ext/Lapack.h>
 
 /* show arguments of .External interface */
@@ -148,8 +148,9 @@ R_Calldata getRCallParam(SEXP R_param, SEXP R_cond) {
     }
 
   }
-
   d->nprotect = nprotect;
+  d->isPerfect = asLogical(getListElement( R_cond, "perfect" ));
+
   return d;
 }
 
@@ -200,9 +201,9 @@ void cum_prob_k(double mx, double sdx2, double lx, double ly, double lz, double 
                  4.0*M_PI/3.0};
 
   p[0] = a[0];
-  p[1] = a[1]*exp(mx+0.5*sdx2);
-  p[2] = a[2]*exp(2.0*(mx+sdx2));
-  p[3] = a[3]*exp(3.0*mx+4.5*sdx2);
+  p[1] = a[1]*std::exp(mx+0.5*sdx2);
+  p[2] = a[2]*std::exp(2.0*(mx+sdx2));
+  p[3] = a[3]*std::exp(3.0*mx+4.5*sdx2);
 
   double mk=0.0;
   for (int i=0;i<4; i++)

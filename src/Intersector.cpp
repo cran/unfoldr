@@ -7,6 +7,8 @@
 
 #include "Intersector.h"
 
+using namespace std;
+
 namespace STGM
 {
 

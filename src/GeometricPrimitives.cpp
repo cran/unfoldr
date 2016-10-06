@@ -51,6 +51,8 @@ do {                                               \
 #include <R_ext/Lapack.h>
 #include "GeometricPrimitives.h"
 
+using namespace std;
+
 static inline double sign(double a,double b) { return a = fabs(a),(b<0)?-a:a; }
 
 /** minimum distance cylinder rods */
@@ -323,7 +325,8 @@ namespace STGM {
 
 
   void CSpheroid::ComputeMatrixA() {
-     m_A[0][0] = m_A[1][1] = 1.0 / SQR(m_a);
+     m_A.nullify();
+	 m_A[0][0] = m_A[1][1] = 1.0 / SQR(m_a);
      m_A[2][2] = 1.0 / SQR(m_b);
 
      CMatrix3d R = RotationMatrixFrom001(m_u);

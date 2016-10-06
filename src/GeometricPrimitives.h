@@ -392,7 +392,6 @@ namespace STGM {
        m_center(center), m_A(A_new), m_a(0), m_b(0), m_phi(0), m_rot(rot), m_id(id),  m_type(10)
         {
           int n = 2, err = 0;
-
           double B[4];
           B[0] = m_A[0][0];
           B[1] = m_A[1][0];
@@ -411,8 +410,13 @@ namespace STGM {
           m_minorAxis[1] = B[3];
 
           if(!err) {
-              double cos_phi = B[1];
-              double sin_phi = B[3];
+        	/* phi is relative to x axis */
+        	/// double cos_phi = B[0];
+ 	        /// double sin_phi = B[1];
+
+        	/* phi is relative to z axis */
+ 	        double cos_phi = B[1];
+            double sin_phi = B[3];
 
             m_phi = acos(cos_phi);     // angle in the intersecting plane
             if( (cos_phi<0 && sin_phi<0) || (cos_phi<0 && sin_phi>=0)) {
@@ -420,13 +424,15 @@ namespace STGM {
             } else if(cos_phi>0 && sin_phi<0) {
                 m_phi = atan(sin_phi/cos_phi)+2*M_PI;
             }
+
+           /* add offset angle because of 3d rgl image,
+            * Here phi does not match with matrix A.
+            * Leave out otherwise
+            */
+            m_phi += m_rot;
+
             m_b = 1.0/sqrt(evalf[1]);
             m_a = 1.0/sqrt(evalf[0]);
-
-            /* add offset angle because of 3d rgl image,
-             * Here phi does not match with matrix A.
-             * Leave out otherwise */
-            m_phi += m_rot;
 
           } else {
               error("Error in eigenvalue decomposition (LAPACK) in ellipse construction method.");
@@ -454,7 +460,8 @@ namespace STGM {
           double cos_phi = m_minorAxis[0];
           double sin_phi = m_minorAxis[1];
 
-          m_phi = acos(cos_phi) ;   // angle in the intersecting plane
+          /* angle in the intersecting plane relative to z axis */
+          m_phi = acos(cos_phi) ;
           if( (cos_phi<0 && sin_phi<0) || (cos_phi<0 && sin_phi>=0)) {
               m_phi = atan(sin_phi/cos_phi)+M_PI;
           } else if(cos_phi>0 && sin_phi<0) {
@@ -471,6 +478,7 @@ namespace STGM {
           m_A = m_A * B;
           B.Transpose();
           m_A = B * m_A;
+
      }
 
     /**

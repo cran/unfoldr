@@ -112,7 +112,7 @@ inline typename CPoint<N>::value_t CPoint<N>::Length() const {
   value_t tmp=0;
   for (size_t i=0; i<n_; i++)
     tmp += SQR(p[i]);
-   return sqrt(tmp);
+   return std::sqrt(tmp);
 }
 
 template <size_t N>
@@ -289,7 +289,7 @@ inline typename CVector<T,N>::value_t CVector<T,N>::Length() const {
   value_t tmp=0;
   for (size_t i=0; i<n_; i++)
     tmp += SQR(data[i]);
-   return sqrt(tmp);
+   return std::sqrt(tmp);
 }
 
 template <class T,size_t N>
@@ -338,6 +338,8 @@ class CMatrix2d {
       }
   }
 
+  void nullify() { std::memset(data, 0, sizeof(data)); }
+
 };
 
 inline const CMatrix2d operator*(const CMatrix2d &a, const CMatrix2d &b) {
@@ -375,6 +377,8 @@ class CMatrix3d {
       }
     }
   }
+
+  void nullify() { std::memset(data, 0, sizeof(data));  }
 
 };
 

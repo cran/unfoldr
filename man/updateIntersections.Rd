@@ -18,7 +18,7 @@ integer vector indicating intersection=\code{1} or non intersection by \code{0}
 Determine intersections of spheroids with bounding (simulation) box
 }
 \details{
-For a given list of spheroids, spheres or cylinders calculate if these objects intersect 
+For a given list of spheroids, spheres or cylinders calculate if these objects intersect
 the simulation box or not.
 }
 

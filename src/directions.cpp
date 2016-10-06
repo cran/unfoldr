@@ -1,6 +1,8 @@
 #include "Rheaders.h"
 #include "directions.h"
 
+using namespace std;
+
 void runidir(double *u, double &theta, double &phi)
 {
     phi=2.0*PI*runif(0.0,1.0);

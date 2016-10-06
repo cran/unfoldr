@@ -18,14 +18,14 @@
 #' @param P coefficient array
 #' @param F input histogram
 #' @param maxIt maximum number of EM iterations
-#' @param nCores number of cpu cores used 
-#' @return trivariate histogram 
+#' @param nCores number of cpu cores used
+#' @return trivariate histogram
 #'
 #' @example inst/examples/unfold.R
 #'
 #' @references
 #' 	Bene\eqn{\check{\textrm{s}}}, V. and Rataj, J. Stochastic Geometry: Selected Topics Kluwer Academic Publishers, Boston, 2004
-em.spheroids <- function(P,F,maxIt,nCores=getOption("par.unfoldr",1)) {	
+em.spheroids <- function(P,F,maxIt,nCores=getOption("par.unfoldr",1)) {
 	.Call(C_EMS,P,F,list("maxSteps"=maxIt,"nCores"=nCores))
 }
 
@@ -35,21 +35,21 @@ em.spheroids <- function(P,F,maxIt,nCores=getOption("par.unfoldr",1)) {
 #'
 #' This is a S3 method for either trivariate stereological unfolding or
 #' estimation of 3d diameter distribution of spheres (Wicksell's corpuscle problem). The function
-#' aggregates all intermediate calculation steps required for the unfolding procedure given the data 
-#' in the prescribed format and returning the parameters as count data in histogram form. 
+#' aggregates all intermediate calculation steps required for the unfolding procedure given the data
+#' in the prescribed format and returning the parameters as count data in histogram form.
 #' The section profiles object \code{sp}, see \code{\link{sectionProfiles}}, is either of class
 #' \code{prolate} or \code{oblate} for the reconstruction of spheroids or in case of spheres
-#' the \code{sp} is simply a numeric vector of circle diameters. Here, the class of section profiles 
+#' the \code{sp} is simply a numeric vector of circle diameters. Here, the class of section profiles
 #' corresponds to the type of objects that will be reconstructed. The number of bin classes is set
 #' by the argument \code{nclass} which is either a scalar value in case of Wicksell's corpuscle problem
 #' or a vector of length three defined in the order of the number of size, angle and shape class limits.
 #' Using multiple cpu cores during the calculations is controlled by either setting the option 'par.unfoldr'
-#' to a user chosen amount of cores or by the argument \code{nCores} directly. 
+#' to a user chosen amount of cores or by the argument \code{nCores} directly.
 #' The return value of the function is an object of class \code{unfold} whose arguments are as follows
 #' \itemize{
 #' 	\item{N_A}{ (trivariate) histogram of section profile parameters}
 #'  \item{N_V}{ (trivariate) histogram of reconstructed parameters}
-#'  \item{P}{ array of coefficients}     
+#'  \item{P}{ array of coefficients}
 #'  \item{breaks}{ list of class limits for binning the parameter values}
 #' }
 #'
@@ -62,7 +62,7 @@ em.spheroids <- function(P,F,maxIt,nCores=getOption("par.unfoldr",1)) {
 #'
 #' @seealso \code{\link{setbreaks}}, \code{\link{binning3d}}
 unfold <- function(sp,nclass,maxIt=64,nCores=getOption("par.unfoldr",1),...) UseMethod("unfold", sp)
-unfold.oblate <- function(sp,nclass,maxIt=64,nCores=getOption("par.unfoldr",1),...) { 
+unfold.oblate <- function(sp,nclass,maxIt=64,nCores=getOption("par.unfoldr",1),...) {
 	unfold.prolate(sp,nclass,maxIt,nCores,...)
 }
 
@@ -71,7 +71,7 @@ unfold.prolate <- function(sp,nclass,maxIt=64,nCores=getOption("par.unfoldr",1),
 	  stop("Lenght of 'dims' not equals 3.")
   	if(any(!(c("A","S","alpha") %in%  names(sp))))
 		stop("Missing named arguments in 'X'")
-	
+
 	breaks <- setbreaks(nclass=nclass,maxSize=max(sp$A),...)
 	N_A <- binning3d(sp$A,sp$alpha,sp$S,breaks)
 	P <- coefficientMatrixSpheroids(breaks,class(sp),TRUE,nCores)
@@ -91,11 +91,11 @@ unfold.numeric <- function(sp,nclass,maxIt=64,nCores=getOption("par.unfoldr",1),
 	# Input histogram
 	#N_V <- em.saltykov(N_A,breaks,maxIt)
 	y <- binning1d(sp,breaks)
-		
+
 	n <- length(y)
 	p <- .C(C_em_saltykov_p, as.integer(n),as.numeric(breaks),
 			p=as.vector(matrix(0,n,n)))$p
-	
+
 	theta <- y+1.0e-6
 	theta <- .C(C_em_saltykov,as.integer(n), as.integer(maxIt),
 				as.numeric(p),as.numeric(y),theta=as.numeric(theta))$theta
@@ -174,7 +174,7 @@ setbreaks <- function(nclass,maxSize,base=NULL,kap=1,sizeType=c("linear","exp"))
 	if(length(nclass)==0 || any(nclass==0))
 		stop("Number of bin classes 'nclass' must be greater than zero.")
 	type <- match.arg(sizeType)
-	
+
 	binA <- switch(type,
 		linear=seq(from=0,to=max(maxSize),by=max(maxSize)/nclass[1]),
 		exp={
@@ -233,7 +233,7 @@ parameterEstimates <- function(H,breaks) {
 #' The function requires the package \code{rgl} to be installed.
 #' The (estimated spatial) joint size-shape-orientation distribution is plotted
 #' in a box with corresponding axes shown. The axes intersect in the first class number.
-#' The ball volumes visualize the relative frequencies of count data for each class which 
+#' The ball volumes visualize the relative frequencies of count data for each class which
 #' can be scaled by the user for non-overlapping spheres.
 #' Balls within the same size class have the same color.
 #'
@@ -241,8 +241,8 @@ parameterEstimates <- function(H,breaks) {
 #'  @param main 	main title
 #'  @param scale 	factor to scale the spheres
 #'  @param col 		vector of color values repeatedly used
-#'  @param ... 		optional graphic arguments passed to function \code{\link[rgl]{spheres3d}}
-trivarHist <- function(A, main = paste("Trivariate Histogram"),scale = 0.5,col, ...) {	
+#'  @param ... 		optional graphic arguments
+trivarHist <- function(A, main = paste("Trivariate Histogram"),scale = 0.5,col, ...) {
   if (requireNamespace("rgl", quietly=TRUE)) {
 	N <- sum(A)
 	pos <- do.call(rbind,lapply(seq(1:dim(A)[1]),
@@ -257,12 +257,12 @@ trivarHist <- function(A, main = paste("Trivariate Histogram"),scale = 0.5,col, 
 	xt <- as.vector(table(pos[,3]))
 	cols2 <- rep(col,length.out=dim(A)[1])
 	ncols <- lapply(1:dim(A)[1], function(i) rep(cols2[i], length.out=xt[i]))
-	
-	#plot spheres	 
+
+	#plot spheres
 	rgl::spheres3d(pos,radius=sz,col=unlist(ncols),...)
 	rgl::axes3d(c('x','y','z'), pos=c(1,1,1), tick=FALSE)
 	rgl::title3d(main,'',"orientation","shape","size")
  } else {
 	 stop("Please install 'rgl' package from CRAN repositories before running this function.")
- } 
+ }
 }

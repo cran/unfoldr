@@ -4,8 +4,8 @@
 \alias{simSphereSystem}
 \title{Simulation of sphere system}
 \usage{
-simSphereSystem(theta, lam, rdist, box = list(c(0, 1)), pl = 0,
-  label = "N")
+simSphereSystem(theta, lam, rdist, box = list(c(0, 1)), perfect = TRUE,
+  pl = 0, label = "N")
 }
 \arguments{
 \item{theta}{simulation parameters}
@@ -15,6 +15,8 @@ simSphereSystem(theta, lam, rdist, box = list(c(0, 1)), pl = 0,
 \item{rdist}{string, radii random generating function name}
 
 \item{box}{simualtion box}
+
+\item{perfect}{logical: \code{perfect=TRUE} (default) simulate perfect}
 
 \item{pl}{print level}
 
@@ -39,8 +41,8 @@ and z direction. If \code{box} has only one element, i.e. \code{list(c(0,1)}, th
 the other dimensions. The argument \code{pl} denotes the print level of information during simulation.
 Currently, only \code{pl=0} for no output and \code{pl}>100 is implemented. Argument \code{cond$rdist} is of
 type string naming the (user defined) radii random generating function.
-Setting \code{size} equal to 'rlnorm' generates log normally distributed radii for a stationary Poisson 
-ball system according to a general approach of perfect simulation (see reference below). Other distributions 
+Setting \code{size} equal to 'rlnorm' generates log normally distributed radii for a stationary Poisson
+ball system according to a general approach of perfect simulation (see reference below). Other distributions
 currently available are the beta, gamma and uniform distribution.
 }
 \examples{
@@ -48,8 +50,8 @@ currently available are the beta, gamma and uniform distribution.
  S <- simSphereSystem(theta,lam=1000,rdist="rlnorm",pl=101)
 }
 \references{
-\itemize{		
-   \item{} {C. Lantu\eqn{\acute{\textrm{e}}}joul. Geostatistical simulation. Models and algorithms. 
+\itemize{
+   \item{} {C. Lantu\eqn{\acute{\textrm{e}}}joul. Geostatistical simulation. Models and algorithms.
             Springer, Berlin, 2002. Zbl 0990.86007}
 	 }
 }

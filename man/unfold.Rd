@@ -26,21 +26,21 @@ Unfolding the (joint) distribution of planar parameters
 \details{
 This is a S3 method for either trivariate stereological unfolding or
 estimation of 3d diameter distribution of spheres (Wicksell's corpuscle problem). The function
-aggregates all intermediate calculation steps required for the unfolding procedure given the data 
-in the prescribed format and returning the parameters as count data in histogram form. 
+aggregates all intermediate calculation steps required for the unfolding procedure given the data
+in the prescribed format and returning the parameters as count data in histogram form.
 The section profiles object \code{sp}, see \code{\link{sectionProfiles}}, is either of class
 \code{prolate} or \code{oblate} for the reconstruction of spheroids or in case of spheres
-the \code{sp} is simply a numeric vector of circle diameters. Here, the class of section profiles 
+the \code{sp} is simply a numeric vector of circle diameters. Here, the class of section profiles
 corresponds to the type of objects that will be reconstructed. The number of bin classes is set
 by the argument \code{nclass} which is either a scalar value in case of Wicksell's corpuscle problem
 or a vector of length three defined in the order of the number of size, angle and shape class limits.
 Using multiple cpu cores during the calculations is controlled by either setting the option 'par.unfoldr'
-to a user chosen amount of cores or by the argument \code{nCores} directly. 
+to a user chosen amount of cores or by the argument \code{nCores} directly.
 The return value of the function is an object of class \code{unfold} whose arguments are as follows
 \itemize{
 	\item{N_A}{ (trivariate) histogram of section profile parameters}
  \item{N_V}{ (trivariate) histogram of reconstructed parameters}
- \item{P}{ array of coefficients}     
+ \item{P}{ array of coefficients}
  \item{breaks}{ list of class limits for binning the parameter values}
 }
 }

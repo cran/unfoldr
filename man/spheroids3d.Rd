@@ -4,8 +4,8 @@
 \alias{spheroids3d}
 \title{Plot particle system}
 \usage{
-spheroids3d(S, box, draw.axes = FALSE, draw.box = TRUE, clipping = FALSE,
-  ...)
+spheroids3d(S, box, draw.axes = FALSE, draw.box = TRUE, draw.bg = TRUE,
+  bg.col = "white", clipping = FALSE, ...)
 }
 \arguments{
 \item{S}{a list of spheroids}
@@ -15,6 +15,10 @@ spheroids3d(S, box, draw.axes = FALSE, draw.box = TRUE, clipping = FALSE,
 \item{draw.axes}{logical: if true, draw the axes}
 
 \item{draw.box}{logical: if true, draw the bounding box}
+
+\item{draw.bg}{logical: if true, draw the a gray background box}
+
+\item{bg.col}{background color used to draw the box background}
 
 \item{clipping}{logical: if true clip to the bounding box}
 

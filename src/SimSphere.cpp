@@ -40,6 +40,7 @@ R_Calldata buildRCallSpheres(SEXP R_param,SEXP R_cond) {
     PROTECT(d->call = getCall(d->fname,d->args,d->rho)); ++nprotect;
   }
   d->nprotect = nprotect;
+  d->isPerfect = asLogical(getListElement( R_cond, "perfect" ));
   return d;
 }
 
@@ -122,15 +123,16 @@ void STGM::CBoolSphereSystem::simSpheres(F f, const char *label) {
   }
 }
 
-void STGM::CBoolSphereSystem::simSpheresPerfect(double mx, double sdx, const char *label) {
+void STGM::CBoolSphereSystem::simSpheresPerfect(double mx, double sdx, const char *label, int perfect) {
   int nTry=0, k=0;
 
   double p[4],
          sdx2=SQR(sdx),
          mu=0,r=0;;
 
-  cum_prob_k(mx,sdx2,m_box.m_up[0],m_box.m_up[1],m_box.m_up[2],p,&mu);
-
+  if(perfect) {
+   cum_prob_k(mx,sdx2,m_box.m_up[0],m_box.m_up[1],m_box.m_up[2],p,&mu);
+  }
   /* get Poisson parameter */
   while(num==0 && nTry<MAX_ITER) {
         num = rpois(mu*m_lam);
@@ -139,22 +141,34 @@ void STGM::CBoolSphereSystem::simSpheresPerfect(double mx, double sdx, const cha
   m_spheres.reserve(num);
 
   if(PL>100) {
-     Rprintf("Spheres (perfect) simulation, bivariate lognormal length/shape: \n");
+     if(perfect)
+      Rprintf("Spheres (perfect) simulation, bivariate lognormal length/shape: \n");
      Rprintf("\t size distribution: %f %f %f \n",  mx,sdx,mu);
      Rprintf("\t cum sum of probabilities: %f, %f, %f, %f \n",p[0],p[1],p[2],p[3]);
   }
 
   /* loop over all */
-  for (size_t niter=0;niter<num; niter++) {
-      sample_k(p,&k);
-      r=rlnorm(mx+k*sdx2,sdx);
+  if(perfect) {
+	  for (size_t niter=0;niter<num; niter++) {
+	        sample_k(p,&k);
+	        r = rlnorm(mx+k*sdx2,sdx);
+	        STGM::CVector3d center(runif(0.0,1.0)*(m_box.m_size[0]+2*r)+(m_box.m_low[0]-r),
+	                               runif(0.0,1.0)*(m_box.m_size[1]+2*r)+(m_box.m_low[1]-r),
+	                               runif(0.0,1.0)*(m_box.m_size[2]+2*r)+(m_box.m_low[2]-r));
 
-      STGM::CVector3d center(runif(0.0,1.0)*(m_box.m_size[0]+2*r)+(m_box.m_low[0]-r),
-                             runif(0.0,1.0)*(m_box.m_size[1]+2*r)+(m_box.m_low[1]-r),
-                             runif(0.0,1.0)*(m_box.m_size[2]+2*r)+(m_box.m_low[2]-r));
+	        m_spheres.push_back( STGM::CSphere(center, r, m_spheres.size()+1,label));
+	    }
+  } else {
+	  for (size_t niter=0;niter<num; niter++) {
+	        r = rlnorm(mx,sdx);
+	        STGM::CVector3d center(runif(0.0,1.0)*(m_box.m_size[0])+(m_box.m_low[0]),
+	                               runif(0.0,1.0)*(m_box.m_size[1])+(m_box.m_low[1]),
+	                               runif(0.0,1.0)*(m_box.m_size[2])+(m_box.m_low[2]));
 
-      m_spheres.push_back( STGM::CSphere(center, r, m_spheres.size()+1,label));
+	        m_spheres.push_back( STGM::CSphere(center, r, m_spheres.size()+1,label));
+	  }
   }
+
 }
 
 
@@ -176,7 +190,7 @@ void STGM::CBoolSphereSystem::simSphereSys(R_Calldata d)
        const char *label = translateChar(asChar(d->label));
 
        if(!std::strcmp(fname, "rlnorm")) {
-           simSpheresPerfect(p1,p2,label);
+    	   simSpheresPerfect(p1,p2,label,d->isPerfect);
        } else {
            R_rndGen_t<rdist2_t> rrandom(p1,p2,fname);
 
@@ -261,7 +275,7 @@ SEXP SphereSystem(SEXP R_param, SEXP R_cond)
 }
 
 
-SEXP SimulateSpheresAndIntersect(SEXP R_param, SEXP R_cond) {
+SEXP SimulateSpheresAndIntersect(SEXP R_param, SEXP R_cond, SEXP R_n) {
   STGM::CBoolSphereSystem *sp = InitSphereSystem(R_param,R_cond);
   R_Calldata cdata = buildRCallSpheres(R_param,R_cond);
 
@@ -271,13 +285,18 @@ SEXP SimulateSpheresAndIntersect(SEXP R_param, SEXP R_cond) {
   sp->simSphereSys(cdata);
   deleteRCall(cdata);
 
-  double dz = asReal(getListElement(R_cond,"dz"));
-  STGM::CPlane plane(STGM::CVector3d(0,0,1), dz);
-
   STGM::Intersectors<STGM::CSphere>::Type objects;
   int intern = 0;
   if(!isNull(getListElement(R_cond,"intern")))
-    intern = asInteger(AS_INTEGER(getListElement(R_cond,"intern")));
+   intern = asInteger(AS_INTEGER(getListElement(R_cond,"intern")));
+  double dz = 0.0;
+  if(!isNull(getListElement(R_cond,"dz")))
+   dz = asReal(AS_NUMERIC(getListElement(R_cond,"dz")));
+  else error(_("intersection is set to zero"));
+
+  STGM::CVector3d n(REAL(R_n)[0],REAL(R_n)[1],REAL(R_n)[2]);
+  STGM::CPlane plane(n,dz);
+  //* intersection */
   sp->IntersectWithPlane(objects,plane,intern);
 
   //Rprintf("objects: %d , pl: %d, dz: %f \n",objects.size(),PL,dz);

@@ -14,6 +14,8 @@
 static SEXP spheroid_type_tag;
 static int PL = 0;
 
+using namespace std;
+
 #define COPY_C2R_MATRIX(M,R,DIM)                  \
 do {                                              \
     int _i, _j;                                   \
@@ -128,6 +130,20 @@ SEXP SetupSpheroidSystem(SEXP R_vname, SEXP R_env, SEXP R_param, SEXP R_cond)
    return R_NilValue;
 }
 
+SEXP CopySpheroidSystem(SEXP R_spheroids, SEXP R_env, SEXP R_param, SEXP R_cond)
+{
+
+   SEXP Rextp=R_NilValue;
+   PROTECT(Rextp = CreateExternalPointer( InitSpheroidSystem(R_param,R_cond) ));
+   STGM::CEllipsoidSystem *sptr = static_cast<STGM::CEllipsoidSystem *>(getExternalPtr(Rextp));
+
+   sptr->refObjects() = convert_C_Spheroids(R_spheroids);
+   setAttrib(R_spheroids, install("eptr"), Rextp);
+
+   UNPROTECT(1);
+   return R_spheroids;
+}
+
 
 SEXP GetEllipsoidSystem(SEXP ext) {
   checkPtr(ext, spheroid_type_tag);
@@ -227,7 +243,7 @@ SEXP IntersectSpheroidSystem(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_intern)
 }
 
 
-SEXP SimulateSpheroidsAndIntersect(SEXP R_param, SEXP R_cond) {
+SEXP SimulateSpheroidsAndIntersect(SEXP R_param, SEXP R_cond, SEXP R_n) {
   /** Init */
   STGM::CEllipsoidSystem *sp = InitSpheroidSystem(R_param,R_cond);
   R_Calldata call_data = getRCallParam(R_param,R_cond);
@@ -255,7 +271,9 @@ SEXP SimulateSpheroidsAndIntersect(SEXP R_param, SEXP R_cond) {
     dz = asReal(AS_NUMERIC(getListElement(R_cond,"dz")));
   else error(_("intersection is set to zero"));
 
-  STGM::CPlane plane(STGM::CVector3d(1,0,0),dz);
+  STGM::CVector3d n(REAL(R_n)[0],REAL(R_n)[1],REAL(R_n)[2]);
+  STGM::CPlane plane(n,dz);
+
   STGM::Intersectors<STGM::CSpheroid>::Type objects;
   sp->IntersectWithPlane(objects,plane,intern);
 
@@ -394,10 +412,10 @@ SEXP convert_R_Ellipses_trunc(STGM::Intersectors<STGM::CSpheroid>::Type &objects
       SET_VECTOR_ELT(R_tmp,2,ScalarReal(ellipse.b()/ellipse.a()));       /* shape  */
 
       phi = ellipse.phi();
-      if(phi>M_PI_2) {
-         if(phi<=M_PI) phi=M_PI-phi;
-         else if(phi<=1.5*M_PI) phi=std::fmod(phi,M_PI);
-         else phi=2.0*M_PI-phi;
+      if(phi > M_PI_2) {
+         if(phi <= M_PI) phi = M_PI-phi;
+         else if(phi < 1.5*M_PI) phi = std::fmod(phi,M_PI);
+         else phi = 2.0*M_PI-phi;
       }
       SET_VECTOR_ELT(R_tmp,3,ScalarReal(phi));                 /* orientation in [0,pi] */
       SET_VECTOR_ELT(R_resultlist,k,R_tmp);
@@ -409,6 +427,10 @@ SEXP convert_R_Ellipses_trunc(STGM::Intersectors<STGM::CSpheroid>::Type &objects
 
 /**
  * @brief Convert ellipses to R objects
+ * 		  Need angle between [0,2pi] in
+ * 		  sectino plane relative to z axis
+ * 		  but rgl uses relative to x axis!!
+ * 		  For plotting: phi = phi + pi/2
  *
  * @param objects Intersection object
  * @return R ellipses
@@ -443,6 +465,8 @@ SEXP convert_R_Ellipses_all(STGM::Intersectors<STGM::CSpheroid>::Type &objects) 
       SET_VECTOR_ELT(R_tmp,1,R_center);
       SET_VECTOR_ELT(R_tmp,2,R_A);
       SET_VECTOR_ELT(R_tmp,3,R_ab);
+
+      /* return angle between [0,2pi] */
       SET_VECTOR_ELT(R_tmp,4,ScalarReal(ellipse.phi()));
 
       PROTECT(names = allocVector(STRSXP, ncomps));
@@ -596,7 +620,8 @@ SEXP convert_R_EllipsoidSystem( STGM::Spheroids &spheroids, STGM::CBox3 &box) {
     PROTECT(R_rotM = allocMatrix(REALSXP,3,3));
 
     // projection
-    STGM::CEllipse2 ellipse = spheroid.spheroidProjection();
+    //STGM::CEllipse2 ellipse = spheroid.spheroidProjection();
+    STGM::CEllipse2 ellipse = spheroid.delamProjection();
     // check intersection
     STGM::Intersector<STGM::CSpheroid> intersector(spheroid , box.m_size );
     Rboolean interior = (Rboolean) TRUE;
@@ -753,7 +778,7 @@ void STGM::CEllipsoidSystem::simBivariate(R_Calldata d) {
       m_spheroids.reserve(num);
 
       CVector3d u;
-      int k=0;
+      int k=0, perfect =  d->isPerfect;
       double x,y,a,s,phi,theta,r=0;
 
       for (size_t niter=0; niter<num; niter++)
@@ -768,13 +793,14 @@ void STGM::CEllipsoidSystem::simBivariate(R_Calldata d) {
             u = (runif(0.0,1.0)<0.5) ? m_mu : -m_mu;
           else rOhserSchladitz(u.ptr(),m_mu.ptr(),kappa,theta,phi);
 
-          /* sample positions conditionally of radii distribution */
-          sample_k(p,&k);
-          r=rlnorm(mx+k*sdx2,sdx);
-          if(m_maxR<r) m_maxR=r;
-
-          if(!R_FINITE(r))
-            warning(_("simEllipsoidSysBivariat(): Some NA/NaN, +/-Inf produced"));
+          if(perfect) {
+        	/* sample positions conditionally of radii distribution */
+        	sample_k(p,&k);
+        	r=rlnorm(mx+k*sdx2,sdx);
+        	if(m_maxR<r) m_maxR=r;
+        	if(!R_FINITE(r))
+        	 warning(_("simEllipsoidSysBivariat(): Some NA/NaN, +/-Inf produced"));
+          }
 
           STGM::CVector3d center(runif(0.0,1.0)*(m_box.m_size[0]+2*r)+(m_box.m_low[0]-r),
                                  runif(0.0,1.0)*(m_box.m_size[1]+2*r)+(m_box.m_low[1]-r),
@@ -939,7 +965,7 @@ void STGM::CEllipsoidSystem::simEllipsoidSys(R_Calldata d) {
 
      /* loop over all */
      CVector3d u;
-     int k = 0;
+     int k = 0, perfect = d->isPerfect;
      double a=0, b=0, theta=0, phi=0, r=0;
      for (size_t niter=0; niter<num; niter++)
      {
@@ -968,14 +994,15 @@ void STGM::CEllipsoidSystem::simEllipsoidSys(R_Calldata d) {
                break;
         }
 
-         /* sample positions conditionally of radii distribution */
-         sample_k(p,&k);
-         r=rdist(p1+k*sd2,sd2);
-         if(m_maxR<r) m_maxR=r;
+         if(perfect) {
+			 /* sample positions conditionally of radii distribution */
+			 sample_k(p,&k);
+			 r=rdist(p1+k*sd2,sd2);
+			 if(m_maxR<r) m_maxR=r;
 
-         if(!R_FINITE(r))
-           warning(_("simEllipsoidSysBivariat(): Some NA/NaN, +/-Inf produced"));
-
+			 if(!R_FINITE(r))
+			   warning(_("simEllipsoidSysBivariat(): Some NA/NaN, +/-Inf produced"));
+		 }
          STGM::CVector3d center(runif(0.0,1.0)*(m_box.m_size[0]+2*r)+(m_box.m_low[0]-r),
                                 runif(0.0,1.0)*(m_box.m_size[1]+2*r)+(m_box.m_low[1]-r),
                                 runif(0.0,1.0)*(m_box.m_size[2]+2*r)+(m_box.m_low[2]-r));

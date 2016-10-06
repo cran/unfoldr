@@ -15,11 +15,12 @@ simModel3d(param, cond)
 spheroid system
 }
 \description{
-Simulate a spheroid system by perfect simulation 
- 
+Simulate a spheroid system by perfect simulation
+}
+\details{
 Simulate a spheroid system by perfect simulation with log normal sizes and transformed
 shape parameter, see \code{\link{simSpheroidSystem}}. This function is intended to be a
-condensed version of \code{\link{simSpheroidSystem}} just for ease of use of exact 
+condensed version of \code{\link{simSpheroidSystem}} just for ease of use of exact
 simulation with random planar orientation of spheroids.
 }
 \examples{

@@ -29,6 +29,8 @@
 /**  elliptic integral second kind */
 extern double elleptint(double, double);
 
+using namespace std;
+
 template<int DIM>
 struct  CArray {
   typedef double CTYPE ;
@@ -660,7 +662,7 @@ static R_CallMethodDef CallEntries[] = {
       CALLDEF(SetupSpheroidSystem,4),
       CALLDEF(SetupSphereSystem,4),
       CALLDEF(SimulateSpheresAndIntersect,2),
-      CALLDEF(SimulateSpheroidsAndIntersect,2),
+      CALLDEF(SimulateSpheroidsAndIntersect,3),
       CALLDEF(Binning3d,6),
       CALLDEF(Binning1d,2),
       CALLDEF(CoefficientMatrixSpheroids,7),

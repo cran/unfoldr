@@ -18,12 +18,13 @@ extern "C" {
 #endif
  //
  SEXP EllipsoidSystem(SEXP R_param, SEXP R_cond);
- SEXP SimulateSpheroidsAndIntersect(SEXP R_param, SEXP R_cond);
+ SEXP SimulateSpheroidsAndIntersect(SEXP R_param, SEXP R_cond, SEXP R_n);
  SEXP IntersectSpheroidSystem(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_intern);
  SEXP DigitizeEllipseIntersections(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_delta);
  SEXP GetEllipsoidSystem(SEXP ext);
  SEXP GetMaxRadius(SEXP ext);
  SEXP SetupSpheroidSystem(SEXP R_vname, SEXP R_env, SEXP R_param, SEXP R_cond);
+ SEXP CopySpheroidSystem(SEXP R_spheroids, SEXP R_env, SEXP R_param, SEXP R_cond);
  SEXP UpdateIntersections(SEXP RS, SEXP R_box);
 
 #ifdef __cplusplus

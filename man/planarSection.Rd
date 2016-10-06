@@ -11,7 +11,7 @@ planarSection(S, d, intern = FALSE)
 
 \item{d}{distance of the intersecting xy-plane to the origin}
 
-\item{intern}{\code{intern=FALSE} (default) return all sections otherwise 
+\item{intern}{\code{intern=FALSE} (default) return all sections otherwise
 only those which have their centers inside the intersection window}
 }
 \value{

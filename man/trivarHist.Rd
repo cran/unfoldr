@@ -12,7 +12,7 @@ trivarHist(A, main = paste("Trivariate Histogram"), scale = 0.5, col, ...)
 	\item{main}{ main title}
 	\item{scale}{ factor to scale the spheres}
 	\item{col}{ vector of color values repeatedly used}
-	\item{...}{optional graphic arguments passed to function \code{\link[rgl]{spheres3d}} }
+	\item{...}{optional graphic arguments}
 }
 
 \value{

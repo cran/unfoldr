@@ -213,7 +213,7 @@ SEXP EllipsoidSystem(SEXP R_param, SEXP R_cond) {
   return R_spheroids;
 }
 
-SEXP IntersectSpheroidSystem(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_intern)
+SEXP IntersectSpheroidSystem(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_intern, SEXP R_pl)
 {
   checkPtr(ext, spheroid_type_tag);
 
@@ -229,7 +229,7 @@ SEXP IntersectSpheroidSystem(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_intern)
   sp->IntersectWithPlane(objects,plane,intern);
 
   SEXP R_ellipses;
-  if(PL==10) {
+  if(asInteger(R_pl)==10) {
     PROTECT(R_ellipses = convert_R_Ellipses_trunc(objects));
   } else {
     PROTECT(R_ellipses = convert_R_Ellipses_all(objects));
@@ -407,9 +407,9 @@ SEXP convert_R_Ellipses_trunc(STGM::Intersectors<STGM::CSpheroid>::Type &objects
   for(size_t k=0; k<objects.size(); ++k)   {
       STGM::CEllipse2 &ellipse = objects[k].getEllipse();
       PROTECT(R_tmp = allocVector(VECSXP,4));
-      SET_VECTOR_ELT(R_tmp,0,ScalarReal(ellipse.a()));                   /* size A */
-      SET_VECTOR_ELT(R_tmp,1,ScalarReal(ellipse.b()));                   /* size C */
-      SET_VECTOR_ELT(R_tmp,2,ScalarReal(ellipse.b()/ellipse.a()));       /* shape  */
+      SET_VECTOR_ELT(R_tmp,0,ScalarReal(ellipse.a()));                  // major semi-axis (for both prolate/oblate)
+      SET_VECTOR_ELT(R_tmp,1,ScalarReal(ellipse.b()));                  // minor semi-axis (for both prolate/oblate)
+      SET_VECTOR_ELT(R_tmp,2,ScalarReal(ellipse.b()/ellipse.a()));      // shape
 
       phi = ellipse.phi();
       if(phi > M_PI_2) {
@@ -427,8 +427,8 @@ SEXP convert_R_Ellipses_trunc(STGM::Intersectors<STGM::CSpheroid>::Type &objects
 
 /**
  * @brief Convert ellipses to R objects
- * 		  Need angle between [0,2pi] in
- * 		  sectino plane relative to z axis
+ * 		  Need angle between [0,2pi] for
+ * 		  intersection plane relative to z axis
  * 		  but rgl uses relative to x axis!!
  * 		  For plotting: phi = phi + pi/2
  *
@@ -436,7 +436,7 @@ SEXP convert_R_Ellipses_trunc(STGM::Intersectors<STGM::CSpheroid>::Type &objects
  * @return R ellipses
  */
 SEXP convert_R_Ellipses_all(STGM::Intersectors<STGM::CSpheroid>::Type &objects) {
-  int nProtected=0, ncomps=5, dim=2;
+  int nProtected=0, ncomps=6, dim=2;
 
   SEXP R_resultlist;
   PROTECT(R_resultlist = allocVector(VECSXP, objects.size()) ); ++nProtected;
@@ -454,8 +454,9 @@ SEXP convert_R_Ellipses_all(STGM::Intersectors<STGM::CSpheroid>::Type &objects) 
 
       REAL(R_center)[0] = ellipse.center()[0];
       REAL(R_center)[1] = ellipse.center()[1];
-      REAL(R_ab)[0] = ellipse.a();
-      REAL(R_ab)[1] = ellipse.b();
+
+      REAL(R_ab)[0] = ellipse.a();    // major semi-axis (for both prolate/oblate)
+      REAL(R_ab)[1] = ellipse.b();	  // minor semi-axis (for both prolate/oblate)
 
       for (int i = 0; i < dim; i++)
         for (int j = 0; j < dim; j++)
@@ -468,6 +469,7 @@ SEXP convert_R_Ellipses_all(STGM::Intersectors<STGM::CSpheroid>::Type &objects) 
 
       /* return angle between [0,2pi] */
       SET_VECTOR_ELT(R_tmp,4,ScalarReal(ellipse.phi()));
+      SET_VECTOR_ELT(R_tmp,5,ScalarReal(ellipse.b()/ellipse.a()));
 
       PROTECT(names = allocVector(STRSXP, ncomps));
       SET_STRING_ELT(names, 0, mkChar("id"));
@@ -475,6 +477,7 @@ SEXP convert_R_Ellipses_all(STGM::Intersectors<STGM::CSpheroid>::Type &objects) 
       SET_STRING_ELT(names, 2, mkChar("A"));
       SET_STRING_ELT(names, 3, mkChar("ab"));
       SET_STRING_ELT(names, 4, mkChar("phi"));
+      SET_STRING_ELT(names, 5, mkChar("S"));
       setAttrib(R_tmp, R_NamesSymbol, names);
 
       SET_VECTOR_ELT(R_resultlist,k,R_tmp);
@@ -779,14 +782,18 @@ void STGM::CEllipsoidSystem::simBivariate(R_Calldata d) {
 
       CVector3d u;
       int k=0, perfect =  d->isPerfect;
-      double x,y,a,s,phi,theta,r=0;
+      double x=0,y=0,a=0,b=0,
+    		 s=1.0,phi=0,theta=0,r=0;
 
       for (size_t niter=0; niter<num; niter++)
       {
           /* sample major semi-axis a, shorter semi-axis is: c=a*s */
           rbinorm(mx,sdx,my,sdy,rho,x,y);
           s=1.0/(1.0+exp(-y));
-          a=exp(x);
+          b=exp(x);
+          a=b*s;
+          if(m_stype==CSpheroid::OBLATE)
+            std::swap(a,b);
 
           /* sample orientation */
           if(kappa<1e-8)
@@ -806,7 +813,8 @@ void STGM::CEllipsoidSystem::simBivariate(R_Calldata d) {
                                  runif(0.0,1.0)*(m_box.m_size[1]+2*r)+(m_box.m_low[1]-r),
                                  runif(0.0,1.0)*(m_box.m_size[2]+2*r)+(m_box.m_low[2]-r));
 
-           m_spheroids.push_back( STGM::CSpheroid(center,a*s,a,u,s,theta,phi,r,niter+1,label) );
+          m_spheroids.push_back( STGM::CSpheroid(center,a,b,u,s,theta,phi,r,niter+1,label) );
+          // m_spheroids.push_back( STGM::CSpheroid(center,a*s,a,u,s,theta,phi,r,niter+1,label) );
        }
        PutRNGstate();
 }
@@ -871,7 +879,7 @@ void STGM::CEllipsoidSystem::simConstEllipsoidSys(R_Calldata d){
                if(kappa<1e-8)
                  runidir(u.ptr(),theta,phi);
                else
-                 rVonMisesFisher(u.ptr(), m_mu.ptr(), kappa, theta, phi);
+                 rVonMisesFisher(u.ptr(), m_mu.ptr(), kappa, phi);
                break;
         }
         s = rshape(s1,s2);
@@ -990,7 +998,7 @@ void STGM::CEllipsoidSystem::simEllipsoidSys(R_Calldata d) {
                if(kappa<1e-8)
                  runidir(u.ptr(),theta,phi);
                else
-                 rVonMisesFisher(u.ptr(), m_mu.ptr(), kappa, theta, phi);
+                 rVonMisesFisher(u.ptr(), m_mu.ptr(), kappa, phi);
                break;
         }
 

@@ -14,17 +14,6 @@
 	}
 }
 
-.section2d <- function(S) {
-	idx <- ifelse(class(S)=="prolate",2,1)
-	AB <- apply(sapply(S, "[[", "ab"),1,function(x) x)
-	#cat("check: ",any(!(AB[,1]<AB[,2])),"\n")
-	structure(
-	  list("A"=AB[,idx],
-		   "S"=apply(AB,1,function(x) x[2]/x[1]),
-	       "alpha"=unlist(lapply(S,function(x) .getAngle(x$phi)))),
-	  class=class(S))
-}
-
 #' Maximum radius of exact simulated spheroids
 #'
 #' Get maximum (random) radius
@@ -56,32 +45,30 @@ updateIntersections <- function(S,box) {
 #' Storing structure for section profiles
 #'
 #' The function aggregates the necessary data for the trivariate unfolding procedure either for \code{type}
-#' \code{prolate} or \code{oblate} spheroids. Argument \code{size} is a numeric matrix containing the
-#' axes lengths as columns.  The \code{angle} is the orientation angle between the major axis and the vertical
-#' axis direction in the section plane. If the angles range within \eqn{[0,2\pi]} these are transformed
-#' to \eqn{[0,\pi/2]}. The function returns a list which consists of either longer or shorter axis \code{A}
-#' of section profiles corresponding to the type of spheroids which are intended to be reconstructed,
-#' the aspect ratio as the shape parameter \code{S} with values in \eqn{(0,1]}, and the orientation angle \code{alpha}.
+#' \code{prolate} or \code{oblate} spheroids. Argument \code{size} is a numeric matrix which contains the
+#' axes lengths (first column corresponds to major semi-axis, second one to minor semi-axis). The \code{angle}
+#' is the orientation angle between the major axis and the vertical axis direction in the section plane.
+#' If the angles range within \eqn{[0,2\pi]} these are transformed to \eqn{[0,\pi/2]}. The function returns a
+#' list which consists of either longer or shorter axis \code{A} of section profiles corresponding to the type
+#' of spheroids which are intended to be reconstructed, the aspect ratio as the shape parameter \code{S} with
+#' values in \eqn{(0,1]}, and the orientation angle \code{alpha}.
 #'
-#' @param size	  matrix of major and minor axes sizes
+#' @param size	  matrix of axes lengths
 #' @param angle   orientation angle
 #' @param type    \code{prolate} or \code{oblate}, default class is \code{prolate}
 #'
 #' @return 		  section profiles object, either of class \code{prolate} or \code{oblate}
 sectionProfiles <- function(size,angle,type=c("prolate","oblate")) {
 	type <- match.arg(type)
-	idx <- ifelse(type=="prolate",1,2)
-
-	if(any(size<0))
+	stopifnot(is.matrix(size))
+	if(anyNA(size) || any(size<0))
 		stop("'size' must have non-negative values.")
-	if(min(angle)<0 || max(angle)>pi/2)
+	if(anyNA(angle) || !is.numeric(angle) || any(angle<0))
 		stop(paste("'angle' must have values between zero and ",quote(pi/2),sep=""))
-
 	if(max(angle)>pi/2)
-		angle <- sapply(angle,.getAngle)
-
-	structure(list("A"=size[,idx],
-				   "S"=apply(size,1,function(x) x[1]/x[2]),
+	 angle <- sapply(angle,.getAngle)	
+	structure(list("A"=if(type=="prolate") size[,2] else size[,1],
+				   "S"=size[,2]/size[,1],
 				   "alpha"=angle),
 		   class=type)
 }
@@ -292,12 +279,8 @@ simSpheroidSystem <- function(theta, lam, size="const", shape="const", orientati
 #' @return 		 spheroid system
 #' @example 	 inst/examples/sim.R
 simModel3d <- function(param, cond) {
-	theta <- list("size"=list("mx"=param$mx,
-							  "sdx"=param$sdx,
-							  "my"=param$my,
-							  "sdy"=param$sdy,
-							  "rho"=param$rho),
-				  "orientation"=list("kappa"=param$kappa),
+	theta <- list("size"=as.list(param)[1:5],
+				  "orientation"=list("kappa"=param["kappa"]),
 				  "shape"=list())
 
 	simSpheroidSystem(theta,cond$lam, size="rbinorm",
@@ -371,8 +354,14 @@ verticalSection <- function(S,d,n=c(0,1,0),intern=FALSE) {
 	  stop("Normal vector is like c(0,1,0). ")
 	if(!(class(S) %in% c("prolate","oblate")))
 	  stop("Spheroids type does not match.")
-	ss <- .Call(C_IntersectSpheroidSystem,attr(S,"eptr"),n, d, as.integer(intern))
-	.section2d(ss)
+	ss <- .Call(C_IntersectSpheroidSystem,attr(S,"eptr"),n, d, intern, 10)
+	A <- if(class(S)=="prolate") sapply(ss,"[[",2) else sapply(ss,"[[",1)
+	structure(
+	    list("A"=A,
+			 "S"=sapply(ss,"[[",3),
+		 "alpha"=sapply(ss,"[[",4),
+	  class=class(S))
+	)
 }
 
 

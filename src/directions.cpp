@@ -33,7 +33,7 @@ void vectorRotation(double *u, double *w, double *mu)
 
 }
 
-void rVonMisesFisher(double *u, double *mu, double kappa, double &theta, double &phi)
+void rVonMisesFisher(double *u, double *mu, double kappa, double &phi)
 {
     double v[2], s, w[3];
     phi = 2.0*PI*runif(0.0,1.0);

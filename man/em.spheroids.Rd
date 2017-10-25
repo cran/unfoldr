@@ -51,19 +51,19 @@ ret <- unfold(sp,c(15,12,10),kap=1.25)
 cat("Intensities: ", sum(ret$N_V)/25, "vs.",lam,"\\n")
 
 ## plot 3d trivariate histogram of joint distribution
-# cols <- c("#0000FF","#00FF00","#FF0000","#FF00FF","#FFFF00","#00FFFF")
-# trivarHist(ret$N_V,col=cols,scale=0.9)
+# trivarHist(ret$N_V,scale=0.9)
 
 param3d <- parameters3d(S)
 paramEst <- parameterEstimates(ret$N_V,ret$breaks)
 
 ## Marginal histograms
+#pdf("spheroidHist.pdf",width = 8, height = 10)
 op <- par(mfrow = c(3, 2))
 hist(param3d$a[param3d$a<max(ret$breaks$size)],
- main=expression(paste("3D Histogram ", a)),
+ main=expression(paste("3D Histogram ", c)),
  breaks=ret$breaks$size,col="gray",right=FALSE,freq=FALSE,xlab="a",ylim=c(0,25))
 hist(paramEst$a,
- main=expression(paste("Estimated histogram ",hat(a))),
+ main=expression(paste("Estimated histogram ",hat(c))),
  breaks=ret$breaks$size,
  right=FALSE,freq=FALSE,col="gray",
  xlab=expression(hat(a)),ylim=c(0,25))
@@ -83,9 +83,9 @@ hist(paramEst$s,main=expression(paste("Estimated Histogram ", hat(s))),
  breaks=ret$breaks$shape,
 right=FALSE,freq=FALSE,col="gray",xlab=expression(hat(s)))
 par(op)
+#dev.off()
 }
 }
 \references{
 Bene\eqn{\check{\textrm{s}}}, V. and Rataj, J. Stochastic Geometry: Selected Topics Kluwer Academic Publishers, Boston, 2004
 }
-

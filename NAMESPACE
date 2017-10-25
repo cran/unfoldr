@@ -8,7 +8,7 @@ export(planarSection,binning1d,coefficientMatrixSpheres,em.saltykov,binning1d)
 export(simSpheroidSystem,getSpheroidSystem,setupSpheroidSystem)
 export(verticalSection,coefficientMatrixSpheroids,binning3d)
 export(em.spheroids,setbreaks,trivarHist,parameters3d,parameterEstimates)
-export(getMaxRadius, sectionProfiles)
+export(getMaxRadius, sectionProfiles, simModel3d)
 export(updateIntersections)
 
 #S3 Methods
@@ -17,7 +17,7 @@ S3method("unfold","oblate")
 S3method("unfold","numeric")
 
 # plotting
-export(cylinders3d, spheroids3d)
+export(cylinders3d, spheroids3d, drawSpheroidIntersection)
 
 export(unfold)
 importFrom("stats", "na.omit")

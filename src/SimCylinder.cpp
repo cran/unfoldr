@@ -222,7 +222,7 @@ void STGM::CCylinderSystem::simConstCylinderSys(R_Calldata d){
               if(kappa<1e-8)
                 runidir(u.ptr(),theta,phi);
               else
-                rVonMisesFisher(u.ptr(), m_mu.ptr(), kappa, theta, phi);
+                rVonMisesFisher(u.ptr(), m_mu.ptr(), kappa, phi);
               break;
        }
        s = rshape(s1,s2);
@@ -440,7 +440,7 @@ void STGM::CCylinderSystem::simCylinderSys(R_Calldata d) {
                if(kappa<1e-8)
                  runidir(u.ptr(),theta,phi);
                else
-                 rVonMisesFisher(u.ptr(), m_mu.ptr(), kappa, theta, phi);
+                 rVonMisesFisher(u.ptr(), m_mu.ptr(), kappa, phi);
                break;
         }
 

@@ -19,7 +19,7 @@ extern "C" {
  //
  SEXP EllipsoidSystem(SEXP R_param, SEXP R_cond);
  SEXP SimulateSpheroidsAndIntersect(SEXP R_param, SEXP R_cond, SEXP R_n);
- SEXP IntersectSpheroidSystem(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_intern);
+ SEXP IntersectSpheroidSystem(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_intern, SEXP R_pl);
  SEXP DigitizeEllipseIntersections(SEXP ext, SEXP R_n, SEXP R_z, SEXP R_delta);
  SEXP GetEllipsoidSystem(SEXP ext);
  SEXP GetMaxRadius(SEXP ext);

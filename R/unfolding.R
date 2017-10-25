@@ -242,9 +242,11 @@ parameterEstimates <- function(H,breaks) {
 #'  @param scale 	factor to scale the spheres
 #'  @param col 		vector of color values repeatedly used
 #'  @param ... 		optional graphic arguments
-trivarHist <- function(A, main = paste("Trivariate Histogram"),scale = 0.5,col, ...) {
+trivarHist <- function(A, main = paste("Trivariate Histogram"),scale = 0.5, col, ...) {
   if (requireNamespace("rgl", quietly=TRUE)) {
 	N <- sum(A)
+	if(missing(col))
+	 col <- c("#0000FF","#00FF00","#FF0000","#FF00FF","#FFFF00","#00FFFF")
 	pos <- do.call(rbind,lapply(seq(1:dim(A)[1]),
 					function(i) {
 						X <- which(A[i,,]!=0,arr.ind=TRUE)

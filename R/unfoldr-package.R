@@ -1,6 +1,6 @@
 ###############################################################################
 # Author:  M. Baaske
-# Date:	   2017/09/15	
+# Date:	   2018/06/15	
 # File:    qle-package.R: 
 # 
 # Comment: General description of the package
@@ -41,8 +41,8 @@ NULL
 
 #' Intersection ellipses parameters
 #' 
-#' The data set consists of section profile parameters (assumed to come from prolate spheroids) of ellipses
-#' fitted to measured particles of an aluminium matrix composite [5] from metallographic analysis. The data
+#' The data set consists of section profile parameters (assumed to come from prolate spheroids) of fitted ellipses
+#' based on measured section particles of an aluminium matrix composite [5] from metallographic analysis. The data
 #' set can be used to reconstruct the trivariate spatial (prolate) spheroid distribution. 
 #' 
 #' @docType data

@@ -1,10 +1,10 @@
 ###############################################################################
 # Author:  M. Baaske
-# Date:	   09.05.2016
-# File:    cylinder.R:
-#
-# Comment:
-#
+# Date:	   2018/06/15	
+# File:    cylinder.R: 
+# 
+# Comment: Simulation of sphero cylinders, intersection and visualization
+# 
 ###############################################################################
 
 #' Simulation of cylinder system
@@ -23,9 +23,10 @@
 #' only one element, i.e. \code{list(c(0,1)}, the same extent is used for the other dimensions.
 #' If \code{rjoint="rmulti"} names a joint random generating function then argument \code{size} is ignored
 #' (see example file "sim.R").
-#' For the purpose of exact simulation setting \code{size} equal to \code{rbinorm} declares a bivarite
-#' size-shape distribution which leads to a lognormal distributed cylinder axis (named \code{u}) half length h
-#' (without caps) and a scaled radius \code{r}. If \eqn{[X,Y]} follow a bivariate normal distribution with 
+#' For the purpose of exact simulation setting \code{size} equal to \code{rbinorm} declares a bivariate normal
+#' size-shape distribution which leads to a lognormally distributed half height (length) \code{h/2} of the
+#' cylinder. The main orientation axis of the cylinder is called \code{u} where its length equals \code{h}
+#' without the end caps and a scaled radius \code{r}. The total length then equals \code{h+2r}. If \eqn{[X,Y]} follow a bivariate normal distribution with 
 #' correlation parameter \eqn{\rho} then \eqn{h=2.0*exp(x)} defines the sample cylinder axis length together
 #' with the scaled radius \eqn{r=0.5*h*s} and shape parameter set to \eqn{s=1/(1+exp(-y))}. The parameter 
 #' \eqn{\rho} defines the degree of correlation between the cylinder axis length and cylinder radius which 
@@ -33,7 +34,7 @@
 #' is tailored to the above described model. For a general approach please see the given reference below.
 #' Other (univariate) cylinder axis lengths types include the beta, gamma, lognormal and uniform distribution
 #' where the shape factor to get the radius either follows a beta distribution or is set to a constant.
-#' Despite the case of constant size simulations all other simulations are done as perfect simulations.
+#' Only simulations done by \code{rbinorm} can use the exact simulation type if \code{perfect=TRUE} otherwise it is ignored.
 #' The current implementation does not include routines for unfolding the joint 3d size-shape-orientation
 #' distribution of cylinders so far. However, this feature this might be provided in a later version.
 #'
@@ -48,6 +49,7 @@
 #' 					    or \code{shape="rbeta"} as beta distributed shape factor. For a radius distribution
 #'	 					use your own joint distribution, see details.
 #' @param orientation   name of random generating function for orientation distribution
+#' @param type			type of cylinder (ignored and not yet used)
 #' @param rjoint 		name of joint random generating function
 #' @param box 			simulation box
 #' @param mu  			main orientation axis, \code{mu=c(0,1,0)} (default)
@@ -65,9 +67,12 @@
 #' 					Springer, Berlin, 2002. Zbl 0990.86007}
 #' 	  }
 simCylinderSystem <- function(theta, lam, size="const", shape="const",
-						orientation="rbetaiso", rjoint=NULL, box=list(c(0,1)),
-							mu=c(0,1,0),perfect=TRUE, pl=0, label="N")
+						orientation="rbetaiso", type=c("sphero","elong"), 
+						 rjoint=NULL, box=list(c(0,1)), mu=c(0,1,0), perfect=TRUE, pl=0, label="N")
 {
+	it <- pmatch(type,c("sphero","elong"))
+	if(length(it)==0 || is.na(it)) stop("Cylinder type 'type' must be either 'sphero' or 'elong'.")
+	
 	if(!is.list(theta))
 		stop("Expected 'theta' as list of named  arguments.")
 	if(!is.numeric(lam) || !(lam>0) )
@@ -81,6 +86,7 @@ simCylinderSystem <- function(theta, lam, size="const", shape="const",
 		stop("Simulation box has wrong dimensions.")
 	names(box) <- c("xrange","yrange","zrange")
 
+	type <- match.arg(type)
 	if(!is.null(rjoint)) {
 		if(!exists(rjoint, mode="function"))
 			stop("Unknown multivarirate random generating function.")
@@ -100,7 +106,7 @@ simCylinderSystem <- function(theta, lam, size="const", shape="const",
 
 		structure(.Call(C_CylinderSystem,
 						list("lam"=lam,"rmulti"=theta),
-						list("rdist"=rjoint,"box"=box,"perfect"=0,
+						list("type"=type,"rdist"=rjoint,"box"=box,"perfect"=0,
 							 "pl"=pl,"mu"=mu,"rho"=.GlobalEnv,"label"=label)),
 				box = box)
 
@@ -122,7 +128,7 @@ simCylinderSystem <- function(theta, lam, size="const", shape="const",
 	 	if(length(its)==0 || is.na(its))
 		 stop("Unknown shape distribution set. Only 'const', 'rbeta' supported.")
 
-		cond <- list("rdist"=list("size"=size, "shape"=shape,"orientation"=orientation),
+		cond <- list("type"=type,"rdist"=list("size"=size, "shape"=shape,"orientation"=orientation),
 					 "box"=box, "pl"=pl,"mu"=mu,"rho"=.GlobalEnv,"label"=label,"perfect"=as.integer(perfect))
 
 		if(cond$rdist$size %in% c("const","rbinorm")) {
@@ -216,4 +222,43 @@ cylinders3d <- function(S, box, draw.axes=FALSE, draw.box=TRUE, clipping=FALSE,.
 	}
 }
 
+#' Cylinder vertical intersection
+#' 
+#' Intersect a clyinder system by a vertical section plane 
+#' 
+#' The function performs a vertical intersection defined by the normal vector
+#' \code{n=c(0,1,0)} which depends on the main orientation axis of the
+#' coordinate system and has to be parallel to this.
+#'
+#' @param S		 list of cylinders, see \code{\link{simCylinderSystem}}
+#' @param d 	 distance of intersecting plane to the origin
+#' @param n 	 normal vector of intersting plane
+#' @param intern \code{intern=FALSE} (default) return all section profiles otherwise
+#' 				only those which have their centers inside the intersection window
+#' 
+#' @return list of size, shape and angle of section profiles
+cylinderIntersection <- function(S, d, n = c(0,1,0), intern=FALSE) {
+	stopifnot(is.logical(intern))
+	if(sum(n) > 1)
+		stop("Normal vector is like c(0,1,0). ")
+	if(!(class(S) %in% c("cylinder")))
+		stop("Class must be `cylinder`.")
+	.Call(C_IntersectCylinderSystem, attr(S,"eptr"), n, d, intern, 100)	
+}
 
+
+#' Cylinder intersection
+#' 
+#' Simulate a cylinder system and intersect
+#' 
+#' The function first simulates a cylinder system according to the parameter \code{theta} and only
+#' returns the resulting section profiles.
+#' 
+#' @param theta simulation parameters
+#' @param cond  conditioning object for simulation and intersection
+#' 
+#' @return list of intersection profiles
+simCylinderIntersection <- function(theta, cond) {
+	.Call(C_SimulateCylindersAndIntersect,
+			c("lam"=cond$lam,theta), cond, cond$nsect)
+}

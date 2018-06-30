@@ -1,8 +1,16 @@
 ###############################################################################
-# Author: M. Baaske
+# Author:  M. Baaske
+# Date:	   2018/06/15	
+# File:    unfolding.R: 
+# 
+# Comment: functions to estimate the joint size-sjape-orientation distribution
+#		   of prolate or oblate spheroids (ellipsoids of revolution),
+#		   visualization of the trivariate 'unfolded' histogram of size, shape
+#		   and orientation,
+# 		   implements the EM algorithm for binned data
+# 
 ###############################################################################
 
-#cot <- function(x) tan(pi/2 - x)
 
 #' Trivariate stereological unfolding
 #'
@@ -200,10 +208,11 @@ setbreaks <- function(nclass,maxSize,base=NULL,kap=1,sizeType=c("linear","exp"))
 #' @param S list of spheroids
 #' @return  list
 parameters3d <- function(S) {
-	idx <- if(class(S)=="prolate") c(1,2) else c(2,1)
+	idx <- if(class(S)=="prolate") c(1,3) else c(3,1)  			# changed index from 2 to 3 for major semi-axis
 	list("a"=unlist(lapply(S,function(x) x$ab[1])),
 		 "Theta"=unlist(lapply(S,function(x) .getAngle(x$angles[1]))),
 		 "s"=unlist(lapply(S,function(x) x$ab[idx[1]]/x$ab[idx[2]])))
+		 
 }
 
 #' Estimated spatial histogram data

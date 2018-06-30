@@ -14,6 +14,7 @@
 #include "unfold.h"
 
 #ifdef _OPENMP
+ #include <omp.h>
  #include <R_ext/MathThreads.h>
  static int nthreads=1;
 #endif
@@ -658,6 +659,7 @@ static R_CallMethodDef CallEntries[] = {
       CALLDEF(EllipsoidSystem,2),
       CALLDEF(CylinderSystem,2),
       CALLDEF(IntersectSpheroidSystem,5),
+	  CALLDEF(IntersectCylinderSystem,5),
       CALLDEF(IntersectSphereSystem,4),
       CALLDEF(UpdateIntersections,2),
       CALLDEF(SphereSystem,2),
@@ -668,6 +670,7 @@ static R_CallMethodDef CallEntries[] = {
       CALLDEF(SetupSphereSystem,4),
       CALLDEF(SimulateSpheresAndIntersect,2),
       CALLDEF(SimulateSpheroidsAndIntersect,3),
+	  CALLDEF(SimulateCylindersAndIntersect,3),
       CALLDEF(Binning3d,6),
       CALLDEF(Binning1d,2),
       CALLDEF(CoefficientMatrixSpheroids,7),

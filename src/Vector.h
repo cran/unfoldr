@@ -43,12 +43,14 @@ struct CPoint {
   CPoint(const CPoint &x);
   CPoint(value_t x0 = 0.0, value_t x1 = 0.0, value_t x2 = 0.0);
   CPoint(const std::vector<value_t> &x);
+  CPoint(value_t * v);
 
   CPoint& operator= (const CPoint &p_);
   value_t &operator[](size_t i) { return p[i]; }
   const value_t &operator[](size_t i) const { return p[i]; }
 
   bool operator== (const CPoint &p_) const;
+  bool operator <(const CPoint &q) const;
 
   void Normalize();
   value_t Length() const;
@@ -87,6 +89,12 @@ CPoint<N>::CPoint(const std::vector<value_t> &x) : n_(N) {
   Memcpy(p,x.data(),n_);
 }
 
+template <size_t N>
+CPoint<N>::CPoint(value_t * v) : n_(N) {
+  for (size_t i=0; i<n_; i++)
+    p[i] = v[i];
+}
+
 
 template <size_t N>
 CPoint<N>& CPoint<N>::operator=(const CPoint<N>& x) {
@@ -120,6 +128,11 @@ inline void CPoint<N>::Normalize() {
    const double invLen = 1.0 / Length();
    for (size_t i=0; i<n_; i++)
      p[i] *= invLen;
+}
+
+template <size_t N>
+bool CPoint<N>::operator <(const CPoint &q) const {
+     return p[0] < q[0] || (p[0] == q[0] && p[1] < q[1]);
 }
 
 typedef CPoint<2> CPoint2d;
@@ -321,10 +334,11 @@ class CMatrix2d {
   ~CMatrix2d() {}
 
   CMatrix2d(const double *a) {
-    data[0][0] = a[0];
-    data[1][0] = a[1];
-    data[0][1] = a[2];
-    data[1][1] = a[3];
+    /**  from R column-major to C row-major */
+	data[0][0] = a[0];
+	data[0][1] = a[1];
+	data[1][0] = a[2];
+	data[1][1] = a[3];
   }
 
   double *operator[](int i) { return data[i]; }
@@ -343,16 +357,16 @@ class CMatrix2d {
 };
 
 inline const CMatrix2d operator*(const CMatrix2d &a, const CMatrix2d &b) {
-    CMatrix2d c;
+    CMatrix2d m;
     for (int i = 0; i < 2; ++i) {
       for (int j = 0; j < 2; ++j) {
-        c[i][j] = 0.0;
+        m[i][j] = 0.0;
         for (int k = 0; k < 2; ++k) {
-          c[i][j] += a[i][k] * b[k][j];
+          m[i][j] += a[i][k] * b[k][j];
         }
       }
     }
-    return c;
+    return m;
 }
 
 

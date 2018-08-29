@@ -8,27 +8,12 @@
 #ifndef INTERSECTOR_H_
 #define INTERSECTOR_H_
 
+#define MEMZERO(p, n) std::memset( (p), 0, (size_t)(n) * sizeof(*p) )
+
 #include "GeometricPrimitives.h"
 
 namespace STGM
 {
-
-
-
-  // Information about the intersection set
-  enum IntersectionType  {
-    EMPTY=0,          // 0
-    NON_EMPTY,        // 1
-    POINT,            // 2
-    LINE,             // 3
-    LINES,            // 4
-    CIRCLE,           // 5
-    CIRCLE_CAPS,      // 6
-    ELLIPSE,          // 7
-    ELLIPSE_ARC,      // 8
-    ELLIPSE_SEGMENT,  // 9
-    ELLIPSE_2D        // 10
-  };
 
   template<class T>
   class Intersector
@@ -52,7 +37,7 @@ namespace STGM
   template<>
   class Intersector<STGM::CSpheroid>
   {
-  public:
+   public:
     Intersector(CSpheroid &_spheroid, CPlane &_plane, CPoint3d &_dimensions)
      : m_spheroid(_spheroid), m_plane(_plane), m_size(_dimensions), m_type(EMPTY)
     {
@@ -70,6 +55,7 @@ namespace STGM
     bool FindIntersection ();
 
     void setPlane(CPlane &_plane) { m_plane = _plane; }
+    CPlane & getPlane() { return m_plane; }
 
     CEllipse2 & getEllipse() { return m_ellipse; }
     const CEllipse2 & getEllipse() const { return m_ellipse; }
@@ -77,7 +63,10 @@ namespace STGM
     CSpheroid &getSpheroid() { return m_spheroid; }
     const CSpheroid &getSpheroid() const { return m_spheroid; }
 
-    CGeometry * getObject(int type) { return &m_ellipse; }
+    CGeometry * getObject() { return &m_ellipse; }
+    const CGeometry * getObject() const { return &m_ellipse; }
+
+    int getType() const { return 0; };
 
     /**
      * @brief Only check if Spheroid intersects a given plane
@@ -142,12 +131,18 @@ namespace STGM
     bool FindIntersection ();
 
     void setPlane(CPlane &plane) { m_plane = plane; }
+    CPlane & getPlane() { return m_plane; }
 
     CCircle3 & getCircle() { return m_circle; }
     const CCircle3 & getCircle() const { return m_circle; }
 
     CSphere &getSphere() { return m_sphere; }
     const CSphere &getSphere() const { return m_sphere; }
+
+    CGeometry * getObject() { return &m_circle;; }
+    const CGeometry * getObject() const { return &m_circle; }
+
+    int getType() const { return 0; };
 
     bool operator() (const CPlane &plane) {
       m_plane = plane;
@@ -214,14 +209,17 @@ namespace STGM
       CEllipse3 & getEllipse () { return m_ellipse; };
       const CEllipse3 & getEllipse () const { return m_ellipse; };
 
-      int getType() const { return m_type; };
+      int getType() const { return (int) m_type; };
       int getSide() const { return m_side; };
 
-      CGeometry * getObject(int type) {
-        if(type == CIRCLE_CAPS || type == CIRCLE) {
+      CPlane & getPlane() { return m_plane; }
+
+      CGeometry * getObject() {
+        if(m_type == CAP || m_type == DISC) {
              return & m_circle1;
-         } else //if(type == ELLIPSE ||  type == ELLIPSE_ARC ||  type == ELLIPSE_SEGMENT) {
-          return &m_ellipse;
+         } else {  					/* if(type == ELLIPSE ||  type == ELLIPSE_ARC ||  type == ELLIPSE_SEGMENT) */
+             return & m_ellipse;
+         }
       }
 
       /**
@@ -244,7 +242,7 @@ namespace STGM
       /**
        * @return
        */
-      IntersectionType FindIntersectionType();
+      void setIntersectionType();
 
       inline void setPlaneIdx() {
           switch(m_plane.idx()) {
@@ -279,7 +277,7 @@ namespace STGM
 
 
       /**
-       * @brief Only check if Spheroid intersects a given plane
+       * @brief Only check if cylinder intersects a given plane
        *        and store the intersecting plane, translate center coordinate
        *        periodically to the opposite plane
        *
@@ -298,21 +296,21 @@ namespace STGM
       }
 
       int TestBoxIntersection(std::vector<STGM::CPlane> planes) {
-            int interior = 1;
-            for(size_t j=0; j<planes.size() ; ++j) {
-                if( operator()(planes[j])) {
-                  interior=0;
-                  break;
-                }
-            }
-            return interior;
+		int interior = 1;
+		for(size_t j=0; j<planes.size() ; ++j) {
+			if( operator()(planes[j])) {
+			  interior=0;
+			  break;
+			}
+		}
+		return interior;
      }
 
      private:
       CCylinder m_cylinder;
       CPlane m_plane;
 
-      STGM::CPoint3d m_size;
+      CPoint3d m_size;
       IntersectionType m_type;
 
       int m_side, m_i, m_j;
@@ -320,69 +318,116 @@ namespace STGM
       CEllipse3 m_ellipse;
 
     public:
-       STGM::CVector3d ipt0, ipt1;
+       CVector3d ipt0, ipt1;
 
     };
 
+    /** some type definition */
+    template<class T>
+    struct Intersectors { typedef typename std::vector< Intersector<T> > Type;  };
+
 
     /**
-     * @brief Digitizer
+     * @brief Digitizer class
      */
-     class CDigitizer
+  	 class CDigitizer
      {
-      public:
-        CDigitizer( int *w, int nrow, int ncol, double delta) :
-          m_w(w), m_nrow(nrow), m_ncol(ncol), m_delta(delta),
+
+       public:
+
+        CDigitizer(int *w, STGM::CVector2d &low, STGM::CVector<int,2> &nPix, double delta) :
+          m_w(w), m_nrow(nPix[1]), m_ncol(nPix[0]), m_delta(delta), m_low(low),
           x(STGM::CPoint2d(0,0)), y(STGM::CPoint2d(0,0))
         {
-          /** safer: initialize */
-          for(int i=0;i<nrow*ncol;i++) m_w[i]=0;
+          /* safer: initialize */
+          MEMZERO(m_w, m_nrow*m_ncol);
           m_nr = m_nrow-1;
           m_nc = m_ncol-1;
           m_d  = 0.5*m_delta-1e-6;
         }
 
-        virtual
-        ~CDigitizer() {};
+        virtual ~CDigitizer() {};
 
-        void start(STGM::CGeometry *obj) {
-           PointVector2d p = obj->getMinMaxPoints();
-           x=p[0]; y=p[1];
+        /**
+         * Iterate over all types of intersections:
+         */
+        template<typename T>
+        void start(typename Intersectors<T>::Type &objects)
+        {
+           CGeometry *obj;
+           PointVector2d p;
+           CBoundingRectangle br;
 
-           STGM::CBoundingRectangle br;
-           br.m_ymin=std::max(0,(int)((y[0]+m_d)/m_delta)); // y-coordinate is related to row number
-           br.m_xmin=std::max(0,(int)((x[0]+m_d)/m_delta)); // x-coordinate is related to col number
-           br.m_ymax=std::min(m_nr,(int)((y[1]-m_d)/m_delta));
-           br.m_xmax=std::min(m_nc,(int)((x[1]-m_d)/m_delta));
+           for(size_t k=0; k<objects.size();k++)
+           {
+               obj = objects[k].getObject();
+               obj->move(m_low);
 
-           for(int i=br.m_ymin;i<(br.m_ymax+1);i++) {
-               for(int j=br.m_xmin;j<(br.m_xmax+1);j++) {
-                   /** change i and j for column/row major order */
-                   if(!m_w[i+j*m_nrow])
-                     if(obj->isInside((j+0.5)*m_delta,(i+0.5)*m_delta))
-                         m_w[i+j*m_nrow]=1;
-               }
+               p = obj->getMinMaxPoints();
+			   x = p[0];
+			   y = p[1];
+
+			   br.m_ymin=std::max(0,(int)((y[0]+m_d)/m_delta)); // y-coordinate is related to row number
+			   br.m_xmin=std::max(0,(int)((x[0]+m_d)/m_delta)); // x-coordinate is related to col number
+			   br.m_ymax=std::min(m_nr,(int)((y[1]-m_d)/m_delta));
+			   br.m_xmax=std::min(m_nc,(int)((x[1]-m_d)/m_delta));
+
+			   for(int i=br.m_ymin;i<(br.m_ymax+1);i++)
+			   {
+				   for(int j=br.m_xmin;j<(br.m_xmax+1);j++)
+				   {
+					   /** change i and j for column/row major order */
+					   //if(!m_w[i+j*m_nrow])
+					   // if(obj->isInside((j+0.5)*m_delta,(i+0.5)*m_delta))
+					   //	 m_w[i+j*m_nrow]=1;
+					   if(!m_w[j+i*m_ncol])
+						 if(obj->isInside((j+0.5)*m_delta,(i+0.5)*m_delta))
+							 m_w[j+i*m_ncol]=1;
+				   }
+			   }
            }
+
         }
 
+        // a template operator for intersection objects
+        template<typename T> void operator()(T &object);
+
       private:
+
         int *m_w, m_nr, m_nc, m_nrow, m_ncol;
         double m_delta, m_d;
-        STGM::CPoint2d x,y;
+        STGM::CVector2d m_low;
+        STGM::CPoint2d x, y;
+
      };
 
-     /** some type definitions */
-     template<class T>
-     struct Intersectors { typedef typename std::vector< Intersector<T> > Type;  };
 
-     template<class T>
-     void digitize(typename STGM::Intersectors<T>::Type &objects, int *w, int nPix, double delta) {
-       int type = 0;
-       STGM::CDigitizer digitizer(w,nPix,nPix,delta);
-       for(size_t k=0;k<objects.size();k++) {
-          digitizer.start(objects[k].getObject(type));
-       }
-     }
+  	 /** digitize a single intersected object */
+  	 template<typename T>
+	 void CDigitizer::operator ()(T &object)
+	 {
+  		object.move(m_low);								   /* move center point relative to [0,0] */
+  		PointVector2d p = object.getMinMaxPoints();
+	    x=p[0];											   /* (x_min,x_max) */
+	    y=p[1];    										   /* (y_min,y_max) */
+
+	    STGM::CBoundingRectangle br;
+	    br.m_xmin=std::max(0,(int)((x[0]+m_d)/m_delta));   /* x-coordinate is related to col number */
+	    br.m_ymin=std::max(0,(int)((y[0]+m_d)/m_delta));   /* y-coordinate is related to row number */
+	    br.m_xmax=std::min(m_nc,(int)((x[1]-m_d)/m_delta));
+	    br.m_ymax=std::min(m_nr,(int)((y[1]-m_d)/m_delta));
+
+		for(int i=br.m_ymin;i<(br.m_ymax+1);i++)
+		{
+		   for(int j=br.m_xmin;j<(br.m_xmax+1);j++)
+		   {
+			   if(!m_w[j+i*m_ncol])									    /* interchange i and j ...*/
+				 if(object.isInside((j+0.5)*m_delta,(i+0.5)*m_delta))
+					 m_w[j+i*m_ncol]=1;									/* ... for transposed image */
+		   }
+		}
+
+	 }
 
 } /* namespace STGM */
 

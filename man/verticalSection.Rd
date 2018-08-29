@@ -2,29 +2,48 @@
 % Please edit documentation in R/spheroid.R
 \name{verticalSection}
 \alias{verticalSection}
-\title{Spheroid vertical section}
+\title{Vertical sections}
 \usage{
 verticalSection(S, d, n = c(0, 1, 0), intern = FALSE)
 }
 \arguments{
-\item{S}{list of spheroids, see \code{\link{simSpheroidSystem}}}
+\item{S}{list of spheroids, see \code{\link{simPoissonSystem}}}
 
-\item{d}{distance of intersecting plane to the origin}
+\item{d}{distance of the intersecting plane from the origin of the box}
 
-\item{n}{normal vector of intersting plane}
+\item{n}{normal vector which defines the interecting vertical plane}
 
 \item{intern}{logical, \code{FALSE} (default), return all section profiles otherwise
-only those which have their centers inside the intersection window (if the 
-intersected spheroid system had been simulated using exact simulation)}
+only those which have their centers inside the correspondig intersection window}
 }
 \value{
-list of size, shape and angle of section profiles
+list of sizes \code{A}, shape factors \code{S} and (vertical) angles \code{alpha}
+              of section profiles in the plane w.r.t the 'z' axis between \eqn{[0,\pi/2]}.
 }
 \description{
-Vertical section of spheroid system
+Compute vertical section profiles of a spheroid system
 }
 \details{
-The function performs a vertical intersection defined by the normal vector
-\code{n=c(0,1,0)} which depends on the main orientation axis of the
-coordinate system and has to be parallel to this.
+The function intersects a spheroid system by a plane defined by the normal vector \code{n} either
+equal to \code{c(0,1,0)} (default) or \code{c(1,0,0)}, which is called a vertical section. Depending on
+the type of spheroid (either "\code{prolate} or "\code{oblate}") the returned semi-axis lengths are those
+corresponding to the minor semi-axis or, respectively, major semi-axis in the way these are required for unfolding.
+}
+\examples{
+ 
+ box <- list("xrange"=c(0,5),"yrange"=c(0,5),"zrange"=c(0,5))
+ 
+ # (exact) bivariate size-shape (isotropic) orientation distribution (spheroids)
+ theta <- list("size"=list("mx"=-2.5,"my"=0.5, "sdx"=0.35,"sdy"=0.25,"rho"=0.15),
+		"orientation"=list("kappa"=1))
+
+ S <- simPoissonSystem(theta,lam=100,size="rbinorm",box=box,
+  type="prolate",perfect=TRUE,pl=1)
+
+ sp <- verticalSection(S,d=2.5,n=c(0,1,0),intern=TRUE)
+ summary(sp$alpha)
+ 
+}
+\author{
+M. Baaske
 }

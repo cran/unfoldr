@@ -2,20 +2,24 @@
 % Please edit documentation in R/spheroid.R
 \name{drawSpheroidIntersection}
 \alias{drawSpheroidIntersection}
-\title{Plot Spheroid intersection}
+\title{Spheroid intersections 3D}
 \usage{
 drawSpheroidIntersection(E, n = c(0, 1, 0), np = 25)
 }
 \arguments{
-\item{E}{a list of spheroid intersections}
+\item{E}{a list of spheroid intersections, see \code{\link{intersectSystem}}}
 
 \item{n}{the normal vector of the intersecting plane}
 
-\item{np}{number of points for polygon approximation of ellipses}
+\item{np}{number of points for a polygon approximation of the ellipses}
 }
 \description{
-Drawing section profiles in 3D plane
+Draw section profiles of spheroids in 3D
 }
 \details{
-The function requires the package \code{rgl} to be installed.
+The function requires the package '\code{rgl}' for drawing section profiles (ellipses)
+into a 3D '\code{rgl}' image. For a full example please see the file 'simSpheroids.R'.
+}
+\author{
+M. Baaske
 }

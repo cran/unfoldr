@@ -2,7 +2,7 @@
 % Please edit documentation in R/unfolding.R
 \name{parameters3d}
 \alias{parameters3d}
-\title{Original parameters}
+\title{3D characteristics of spheroids}
 \usage{
 parameters3d(S)
 }
@@ -10,13 +10,16 @@ parameters3d(S)
 \item{S}{list of spheroids}
 }
 \value{
-list
+a list of spheroids` 3D characteristics
 }
 \description{
-Extract the original 3d size-shape-orientation parameters
+Extract size, shape and orientation angle
 }
 \details{
-The function simply extracts the parameters for the original 3d spheroid system
-either for oblate or prolate spheroids and returns a list which consists of sizes
-\code{a}, the orientation angles \code{Theta} and the shape parameters \code{s}.
+The function extracts the characteristics of a 3D spheroid system, either oblate or prolate spheroids,
+and returns a list of the following elements: major semi-axis length '\code{a}', shape factor '\code{s}'
+and polar angle '\code{Theta}'. For a full example please see the file 'unfold.R'.
+}
+\author{
+M. Baaske
 }

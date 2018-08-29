@@ -2,22 +2,25 @@
 % Please edit documentation in R/spheroid.R
 \name{updateIntersections}
 \alias{updateIntersections}
-\title{Updated spheroid intersections}
+\title{Check intersection}
 \usage{
-updateIntersections(S, box)
+updateIntersections(S)
 }
 \arguments{
-\item{S}{geometric objects system}
-
-\item{box}{the simulation box}
+\item{S}{list of spheres, spheroids or spherocylinders, see \code{\link{simPoissonSystem}}}
 }
 \value{
-integer vector indicating intersection=\code{1} or non intersection by \code{0}
+binary integer vector of length equal to the length of \code{S}
 }
 \description{
-Determine intersections of spheroids with bounding (simulation) box
+Check itersection of either spheres, spheroids or spherocylinders
 }
 \details{
-For a given list of spheroids, spheres or cylinders calculate if these objects intersect
-the simulation box or not.
+For a given list of spheres, spheroids or spherocylinders the function tests whether an object intersects
+one of the lateral planes (bottom, top plane included) of the simulation box. The vector returned is of length
+equal to the number of objects in \code{S} and has entries either \code{1} for an object which is intersected by
+and \code{0} otherwise.
+}
+\author{
+M. Baaske
 }

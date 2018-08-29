@@ -4,7 +4,7 @@
 \alias{em.spheroids}
 \title{Trivariate stereological unfolding}
 \usage{
-em.spheroids(P, F, maxIt, nCores = getOption("par.unfoldr", 1))
+em.spheroids(P, F, maxIt, nCores = getOption("par.unfoldr", 2L))
 }
 \arguments{
 \item{P}{coefficient array}
@@ -13,7 +13,7 @@ em.spheroids(P, F, maxIt, nCores = getOption("par.unfoldr", 1))
 
 \item{maxIt}{maximum number of EM iterations}
 
-\item{nCores}{number of cpu cores used}
+\item{nCores}{number of cpu cores to be used}
 }
 \value{
 trivariate histogram
@@ -22,70 +22,38 @@ trivariate histogram
 Estimate the joint size-shape-orientation distribution of spheroids
 }
 \details{
-Given an array of coefficients \code{P} and the input histogram \code{F} of
-measured planar section profiles, see \code{\link{binning3d}}, the function
-estimates the spatial joint size-shape-orientation distribution of spheroids
-as a trivariate histogram, \code{triHist}, by the EM algorithm.
-If the option 'par.unfoldr' is set to a user chosen amount of cores then
-parts of the EM iterations are done in parallel.
+Given an array of coefficients \code{P}, see \code{\link{coefficientMatrixSpheroids}} and an input histogram
+\code{F} of measured planar characteristics of section profiles, the function estimates the spatial joint
+size-shape-orientation distribution of the corresponding spheroids in 3D by a discretized version of the
+\emph{Expectation Maximization} (EM) algorithm. A number of cpu cores can be set by the option '\code{par.unfoldr}'
+for parallel computations. The function is also internally called by \code{\link{unfold}} in case of spheroids.
 }
 \examples{
-\dontrun{
-## Spheroids with lognormal distributed length of axes
+## Comment: Trivariate unfolding of spheroid distribution
+
 ## set number of cpu cores (optional)
-# options(par.unfoldr=8)
+options(par.unfoldr=2L)
 
 ## Intensity: mean number of spheroids per unit volume
-lam <- 2500
+lam <- 1000
 
 ## simulation parameters
 theta <- list("size"=list("meanlog"=-2.5,"sdlog"=0.5),
-		      "shape"=list("alpha"=0.5),"orientation"=list("kappa"=1.5))
+		      "shape"=list(0.5),"orientation"=list("kappa"=2))
 ## simualtion
 set.seed(1234)
-S <- simSpheroidSystem(theta,lam,size="rlnorm",
-			orientation="rbetaiso",box=list(c(0,5)),stype="prolate",pl=101)
+
+S <- simPoissonSystem(theta,lam,size="rlnorm",
+		orientation="rbetaiso",box=list(c(0,5)),type="prolate",pl=1)
+
 ## unfolding
 sp <- verticalSection(S,2.5)
-ret <- unfold(sp,c(15,12,10),kap=1.25)
+ret <- unfold(sp,c(7,6,5),kap=1.25)
 cat("Intensities: ", sum(ret$N_V)/25, "vs.",lam,"\\n")
-
-## plot 3d trivariate histogram of joint distribution
-# trivarHist(ret$N_V,scale=0.9)
-
-param3d <- parameters3d(S)
-paramEst <- parameterEstimates(ret$N_V,ret$breaks)
-
-## Marginal histograms
-#pdf("spheroidHist.pdf",width = 8, height = 10)
-op <- par(mfrow = c(3, 2))
-hist(param3d$a[param3d$a<max(ret$breaks$size)],
- main=expression(paste("3D Histogram ", c)),
- breaks=ret$breaks$size,col="gray",right=FALSE,freq=FALSE,xlab="a",ylim=c(0,25))
-hist(paramEst$a,
- main=expression(paste("Estimated histogram ",hat(c))),
- breaks=ret$breaks$size,
- right=FALSE,freq=FALSE,col="gray",
- xlab=expression(hat(a)),ylim=c(0,25))
-hist(param3d$Theta[param3d$Theta<max(ret$breaks$angle)],
- main=expression(paste("3D Histogram ", theta)),
- breaks=ret$breaks$angle,col="gray",right=FALSE,freq=FALSE,
- xlab=expression(theta),ylim=c(0,2))
-hist(paramEst$Theta,
- main=expression(paste("Estimated Histogram ", hat(theta))),
- breaks=ret$breaks$angle,
- right=FALSE,freq=FALSE,col="gray",
- xlab=expression(hat(theta)),ylim=c(0,2))
-hist(param3d$s,main=expression(paste("3D Histogram ", s)),
- col="gray",breaks=ret$breaks$shape,
- right=FALSE,freq=FALSE,xlab="s")
-hist(paramEst$s,main=expression(paste("Estimated Histogram ", hat(s))),
- breaks=ret$breaks$shape,
-right=FALSE,freq=FALSE,col="gray",xlab=expression(hat(s)))
-par(op)
-#dev.off()
-}
 }
 \references{
 Bene\eqn{\check{\textrm{s}}}, V. and Rataj, J. Stochastic Geometry: Selected Topics Kluwer Academic Publishers, Boston, 2004
+}
+\author{
+M. Baaske
 }

@@ -2,30 +2,50 @@
 % Please edit documentation in R/spheroid.R
 \name{sectionProfiles}
 \alias{sectionProfiles}
-\title{Constuctor section profiles}
+\title{Construct section profiles}
 \usage{
-sectionProfiles(size, angle, type = c("prolate", "oblate"))
+sectionProfiles(size, alpha, type = c("prolate", "oblate"))
 }
 \arguments{
-\item{size}{matrix of axes lengths}
+\item{size}{matrix of lengths of the semi-axes}
 
-\item{angle}{orientation angle}
+\item{alpha}{angle of section profiles in the plane (see details)}
 
-\item{type}{\code{prolate} or \code{oblate}, default class is \code{prolate}}
+\item{type}{name of the spheroid type, either "\code{prolate}" or "\code{oblate}" from which the
+section profiles are assumed to come from}
 }
 \value{
-section profiles object, either of class \code{prolate} or \code{oblate}
+The function returns a list which consists of either the longer or shorter
+				semi-axis length named \code{A} of section profiles corresponding to the type of spheroids used before and whose joint
+				joint distribution is to be estimated (by unfolding), the shape factor \code{S} of both semi-axes as the shape factor
+				between \eqn{(0,1]} and the orientation	angle \code{alpha}, either of class "\code{prolate}" or "\code{oblate}".
 }
 \description{
-Storing structure for section profiles
+Set up section profiles of spheroids for unfolding
 }
 \details{
-The function aggregates the necessary data for the trivariate unfolding procedure either for \code{type}
-\code{prolate} or \code{oblate} spheroids. Argument \code{size} is a numeric matrix which contains the
-axes lengths (first column corresponds to major semi-axis, second one to minor semi-axis). The \code{angle}
-is the orientation angle between the major axis and the vertical axis direction in the section plane.
-If the angles range within \eqn{[0,2\pi]} these are transformed to \eqn{[0,\pi/2]}. The function returns a
-list which consists of either longer or shorter axis \code{A} of section profiles corresponding to the type
-of spheroids which are intended to be reconstructed, the aspect ratio as the shape parameter \code{S} with
-values in \eqn{(0,1]}, and the orientation angle \code{alpha}.
+The function aggregates the necessary information for trivariate unfolding of spheroids' joint size-shape orientation distribution
+of type either "\code{prolate}" or "\code{oblate}". The argument \code{size} is a numeric matrix of semi-axis lengths where the first column
+corresponds to the major semi-axis and the second one to minor semi-axis. The orientation of an ellipse is assumed to be measured as the angle
+between its major axis and vertical axis of the coordinate system in the intersection plane ('z' axis in 3D). For values in \eqn{[0,2\pi]} these
+angles are automatically transformed to \eqn{[0,\pi/2]} as required by the unfolding procedure.
+}
+\examples{
+ # load data set
+ data(data15p)
+ 
+ # matrix of semi-axes lengths (major,minor)
+ AC <- data.matrix(data15p[c("A","C")])/1000	
+
+ # selecting the minor semi-axis for prolate type of spheroids:
+ # independent of nomenclature (always named \\code{A})
+ sp <- sectionProfiles(AC,unlist(data15p["alpha"]))
+
+ summary(sp$A)			# here minor semi-axis because of prolate
+ summary(sp$S)			# shape factor
+ summary(sp$alpha)		# angle assumed to be w.r.t. (vertical) 'z' axis 
+ 
+}
+\author{
+M. Baaske
 }

@@ -219,13 +219,13 @@ namespace STGM {
   typedef const double (*matrix_t)[3];
 
   void real_eval(double *a, int *n, double *evalf, int *err) {
-              // size(evalf): n
-              // result: evec = a
+	  // size(evalf): n
+	  // result: evec = a
 
-              int lda = *n,  lwork = 3*lda-1;
-              double *work = Calloc(lwork, double);
-              F77_NAME(dsyev)("V","U", &lda, a, &lda, evalf, work, &lwork, err);
-              Free(work);
+	  int lda = *n,  lwork = 3*lda-1;
+	  double *work = Calloc(lwork, double);
+	  F77_NAME(dsyev)("V","U", &lda, a, &lda, evalf, work, &lwork, err);
+	  Free(work);
 
   }
 
@@ -366,9 +366,9 @@ namespace STGM {
    }
 
    CEllipse2 CCylinder::crackProjection() const {
-       STGM::CPoint2d ctr(m_center[0],m_center[1]);
+	   STGM::CVector2d ctr(m_center[0],m_center[1]);
        STGM::CVector3d z(cos(m_phi)*m_u[2], sin(m_phi)*m_u[2], sin(-m_phi)*m_u[1]-cos(-m_phi)*m_u[0]);
-       STGM::CVector3d pz(z),  pv(cross(m_u,z));    // minor, major
+       STGM::CVector3d pz(z), pv(cross(m_u,z));    // minor, major
 
        pz.Normalize();
        pv.Normalize();
@@ -378,8 +378,8 @@ namespace STGM {
        pv *= m_r;
        pv += m_center;
 
-       STGM::CPoint2d axis1(pz[0]-ctr[0],pz[1]-ctr[1]);
-       STGM::CPoint2d axis2(pv[0]-ctr[0],pv[1]-ctr[1]);
+       STGM::CVector2d axis1(pz[0]-ctr[0],pz[1]-ctr[1]);
+       STGM::CVector2d axis2(pv[0]-ctr[0],pv[1]-ctr[1]);
 
        double zlen = axis1.Length();
        double vlen = axis2.Length();
@@ -392,9 +392,8 @@ namespace STGM {
 
 
    double CCylinder::delamProjection(PointVector2d &P, int npoints) {
-      int np = std::floor(MAX(8.0,(double)npoints-4.0)/2.0);
-      CVector3d n(0,0,1),
-                u(cross(m_u,n));
+      int np = std::floor(MAX(8.0,(double) npoints-4.0)/2.0);
+      CVector3d n(0,0,1), u(cross(m_u,n));
 
       /// projected rectangle points
       u.Normalize();
@@ -452,21 +451,21 @@ namespace STGM {
   void CBox3::ConstructBoundingPlanes()
   {
     /** sorted order of normal vectors (planes) -  do not change! */
-    m_planes.push_back(CPlane(CVector3d(1,0,0),0)); // left
-    m_planes.push_back(CPlane(CVector3d(-1,0,0),m_size[0])); // right
-    m_planes.push_back(CPlane(CVector3d(0,1,0),0)); // front
-    m_planes.push_back(CPlane(CVector3d(0,-1,0),m_size[1])); // behind
-    m_planes.push_back(CPlane(CVector3d(0,0,1),0)); // bottom
-    m_planes.push_back(CPlane(CVector3d(0,0,-1),m_size[2])); // top
+	  m_planes.push_back(CPlane(STGM::CVector3d(1,0,0),m_low[0])); // left
+	  m_planes.push_back(CPlane(STGM::CVector3d(1,0,0),m_up[0]));  // right in x direction
+	  m_planes.push_back(CPlane(STGM::CVector3d(0,1,0),m_low[1])); // front
+	  m_planes.push_back(CPlane(STGM::CVector3d(0,1,0),m_up[1]));  // back in y direction
+	  m_planes.push_back(CPlane(STGM::CVector3d(0,0,1),m_low[2])); // bottom
+	  m_planes.push_back(CPlane(STGM::CVector3d(0,0,1),m_up[2]));  // top
   }
 
   void CBox3::ConstructBoxLateralPlanes()
   {
-      /** sorted order of normal vectors (planes) -  do not change! */
-      m_lateral_planes.push_back(CPlane(STGM::CVector3d(1,0,0),0)); // left
-      m_lateral_planes.push_back(CPlane(STGM::CVector3d(-1,0,0),m_size[0])); // right
-      m_lateral_planes.push_back(CPlane(STGM::CVector3d(0,1,0),0)); // front
-      m_lateral_planes.push_back(CPlane(STGM::CVector3d(0,-1,0),m_size[1])); // behind
+	  /** sorted order of normal vectors (planes) -  do not change! */
+	  m_lateral_planes.push_back(CPlane(STGM::CVector3d(1,0,0),m_low[0])); // left
+	  m_lateral_planes.push_back(CPlane(STGM::CVector3d(1,0,0),m_up[0]));  // right in x direction
+	  m_lateral_planes.push_back(CPlane(STGM::CVector3d(0,1,0),m_low[1])); // front
+	  m_lateral_planes.push_back(CPlane(STGM::CVector3d(0,1,0),m_up[1]));  // back in y direction
   }
 
   STGM::CEllipse2 CSpheroid::spheroidProjection() const {
@@ -479,22 +478,24 @@ namespace STGM {
 
   STGM::CEllipse2 CSpheroid::delamProjection() const
   {
-    array_t  m = m_center.ptr();
-
     STGM::CMatrix2d A_new;
     A_new[0][0]= m_A[0][0];
     A_new[0][1]= m_A[0][1];
     A_new[1][0]= m_A[1][0];
     A_new[1][1]= m_A[1][1];
 
-    STGM::CPoint2d center(m[0],m[1]);
-    return STGM::CEllipse2(A_new, center, m_id, 0.5*M_PI);
+    array_t m = m_center.ptr();
+    STGM::CVector2d center(m[0],m[1]);
+
+    // TODO: check! phi.
+    //return STGM::CEllipse2(A_new, center, m_id, 0.5*M_PI);
+    return STGM::CEllipse2(A_new, center, m_id);
   }
 
-  STGM::CEllipse2 crackProjection(STGM::CVector3d &center, STGM::CVector3d &u, double a, double phi, int id) {
-    STGM::CPoint2d ctr(center[0],center[1]);
-    STGM::CVector3d z(cos(phi)*u[2], sin(phi)*u[2], sin(-phi)*u[1]-cos(-phi)*u[0]);
-
+  STGM::CEllipse2 crackProjection(STGM::CVector3d &center, STGM::CVector3d &u, double a, double phi, int id)
+  {
+	STGM::CVector2d ctr(center[0],center[1]);
+	STGM::CVector3d z(cos(phi)*u[2], sin(phi)*u[2], sin(-phi)*u[1]-cos(-phi)*u[0]);
     STGM::CVector3d pz(z), pv(cross(u,z));  // minor and major
     pz.Normalize();
     pv.Normalize();
@@ -503,8 +504,8 @@ namespace STGM {
     pv *= a;
     pv += center;
 
-    STGM::CPoint2d axis1(pz[0]-ctr[0],pz[1]-ctr[1]);
-    STGM::CPoint2d axis2(pv[0]-ctr[0],pv[1]-ctr[1]);
+    STGM::CVector2d axis1(pz[0]-ctr[0],pz[1]-ctr[1]);
+    STGM::CVector2d axis2(pv[0]-ctr[0],pv[1]-ctr[1]);
 
     double zlen = axis1.Length();
     double vlen = axis2.Length();
@@ -516,8 +517,8 @@ namespace STGM {
 
   STGM::CEllipse2 CSpheroid::crackProjection() const
   {
-        STGM::CPoint2d ctr(m_center[0],m_center[1]);
-        STGM::CVector3d z(cos(m_phi)*m_u[2],
+	    STGM::CVector2d ctr(m_center[0],m_center[1]);
+	    STGM::CVector3d z(cos(m_phi)*m_u[2],
                           sin(m_phi)*m_u[2],
                           sin(-m_phi)*m_u[1]-cos(-m_phi)*m_u[0]);
 
@@ -532,8 +533,8 @@ namespace STGM {
         pv *= m_a;
         pv += m_center;
 
-        STGM::CPoint2d axis1(pz[0]-ctr[0],pz[1]-ctr[1]);
-        STGM::CPoint2d axis2(pv[0]-ctr[0],pv[1]-ctr[1]);
+        STGM::CVector2d axis1(pz[0]-ctr[0],pz[1]-ctr[1]);
+        STGM::CVector2d axis2(pv[0]-ctr[0],pv[1]-ctr[1]);
 
         double zlen = axis1.Length();
         double vlen = axis2.Length();

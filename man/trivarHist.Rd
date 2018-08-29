@@ -4,29 +4,30 @@
 \alias{trivarHist}
 \title{Trivariate histogram}
 \usage{
-trivarHist(A, main = paste("Trivariate Histogram"), scale = 0.5, col, ...)
+trivarHist(A, main = paste("Trivariate Histogram"), scale = 0.5, col,
+  ...)
 }
-
 \arguments{
-	\item{A}{ 3d array of count data}
-	\item{main}{ main title}
-	\item{scale}{ factor to scale the spheres}
-	\item{col}{ vector of color values repeatedly used}
-	\item{...}{optional graphic arguments}
-}
+\item{A}{3D array of count data (estimated histogram), see \code{\link{unfold}}}
 
-\value{
-  the graphical output: trivariate histogram
-}
+\item{main}{main title of the plot}
 
+\item{scale}{scaling factor for non-overlapping spheres}
+
+\item{col}{vector of color values repeatedly used for all classes}
+
+\item{...}{graphical parameters passed to \code{rgl::spheres3d}}
+}
 \description{
-Plot trivariate histogram of size, shape, orientation distribution
+3D plot of a trivariate histogram
 }
 \details{
-The (estimated spatial) joint size-shape-orientation distribution is plotted
-in a box with corresponding axes shown. The axes intersect in the first class number.
-The ball volumes visualize the relative frequencies of count data for each class which 
-can be scaled by the user for non-overlapping spheres.
-Balls within the same size class have the same color.
+The (estimated spatial) joint size-shape-orientation distribution is plotted in a 3D
+histogram with corresponding axes. The axes intersect in the first class number.
+The ball volumes visualize the relative frequencies of count data for each class which
+can be scaled by the user in order to make the spheres non-overlapping. Balls within the
+same size class have the same color. For an example please see the file 'almmc.R'.
 }
-
+\author{
+M. Baaske
+}

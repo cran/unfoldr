@@ -7,11 +7,8 @@
 
 #include <R_ext/Rdynload.h>
 
-#include "SimSphere.h"
-#include "SimEllipsoid.h"
-#include "SimCylinder.h"
-
 #include "unfold.h"
+#include "SimPoisson.h"
 
 #ifdef _OPENMP
  #include <omp.h>
@@ -656,32 +653,22 @@ static R_CMethodDef CEntries[]  = {
 };
 
 static R_CallMethodDef CallEntries[] = {
-      CALLDEF(EllipsoidSystem,2),
-      CALLDEF(CylinderSystem,2),
-      CALLDEF(IntersectSpheroidSystem,5),
-	  CALLDEF(IntersectCylinderSystem,5),
-      CALLDEF(IntersectSphereSystem,4),
-      CALLDEF(UpdateIntersections,2),
-      CALLDEF(SphereSystem,2),
-      CALLDEF(GetSphereSystem,1),
-      CALLDEF(GetMaxRadius,1),
-      CALLDEF(GetEllipsoidSystem,1),
-      CALLDEF(SetupSpheroidSystem,4),
-      CALLDEF(SetupSphereSystem,4),
-      CALLDEF(SimulateSpheresAndIntersect,2),
-      CALLDEF(SimulateSpheroidsAndIntersect,3),
-	  CALLDEF(SimulateCylindersAndIntersect,3),
-      CALLDEF(Binning3d,6),
-      CALLDEF(Binning1d,2),
-      CALLDEF(CoefficientMatrixSpheroids,7),
-      CALLDEF(EMS,3),
-      {NULL, NULL, 0}
+	CALLDEF(PoissonSystem,2),
+	CALLDEF(IntersectPoissonSystem,3),
+    CALLDEF(UpdateIntersections,2),
+    CALLDEF(DigitizeProfiles,4),
+    CALLDEF(Binning3d,6),
+    CALLDEF(Binning1d,2),
+    CALLDEF(CoefficientMatrixSpheroids,7),
+    CALLDEF(EMS,3),
+    {NULL, NULL, 0}
 };
 
 
 void R_init_unfoldr(DllInfo *info) {
   R_registerRoutines(info, CEntries,CallEntries, NULL, NULL);
   R_useDynamicSymbols(info, FALSE);
+
 }
 
 /*

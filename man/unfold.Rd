@@ -4,39 +4,39 @@
 \alias{unfold}
 \title{Stereological unfolding}
 \usage{
-unfold(sp, nclass, maxIt = 64, nCores = getOption("par.unfoldr", 1), ...)
+unfold(sp, nclass, maxIt = 64, nCores = getOption("par.unfoldr", 2L),
+  ...)
 }
 \arguments{
-\item{sp}{section profiles}
+\item{sp}{section profiles, see \code{\link{sectionProfiles}}}
 
-\item{nclass}{number of classes}
+\item{nclass}{number of classes, see details}
 
 \item{maxIt}{maximum number of EM iterations}
 
-\item{nCores}{number of cpu cores used}
+\item{nCores}{number of cpu cores}
 
 \item{...}{optional arguments passed to \code{\link{setbreaks}}}
 }
 \value{
-object of class \code{unfold}
+object of class "\code{unfold}", see details
 }
 \description{
 Unfolding the (joint) distribution of planar parameters
 }
 \details{
-This is a S3 method for either trivariate stereological unfolding or
-estimation of 3d diameter distribution of spheres (Wicksell's corpuscle problem). The function
-aggregates all intermediate calculation steps required for the unfolding procedure given the data
-in the prescribed format and returning the parameters as count data in histogram form.
-The section profiles object \code{sp}, see \code{\link{sectionProfiles}}, is either of class
-\code{prolate} or \code{oblate} for the reconstruction of spheroids or in case of spheres
-the \code{sp} is simply a numeric vector of circle diameters. Here, the class of section profiles
-corresponds to the type of objects that will be reconstructed. The number of bin classes is set
-by the argument \code{nclass} which is either a scalar value in case of Wicksell's corpuscle problem
-or a vector of length three defined in the order of the number of size, angle and shape class limits.
-Using multiple cpu cores during the calculations is controlled by either setting the option 'par.unfoldr'
-to a user chosen amount of cores or by the argument \code{nCores} directly.
-The return value of the function is an object of class \code{unfold} whose arguments are as follows
+This is a S3 method for either trivariate stereological unfolding or estimation of the 3D diameter distribution
+of spheres which is better known as the \emph{Wicksell's corpuscle problem}. The function aggregates all intermediate
+computations required for the unfolding procedure given the data in the prescribed format, see reference of functions below,
+and returning the characteristics as count data in form of a \emph{trivariate} histogram. The section profile objects \code{sp},
+see \code{\link{sectionProfiles}}, are either of class \code{prolate} or \code{oblate} for the reconstruction of the corresponding
+spheroids or, respectively, spheres. The result of the latter is simply a numeric vector of circle diameters. The number of bin
+classes for discretization of the underlying integral equations which must be solved is set by the argument \code{nclass}.
+In case of Wicksell's corpuscle problem (spheres as grains) this is simply a scalar value denoting the number of bins for the diameter.
+For spheroids it refers to a vector of length three defined in the order of the number of size, angle and shape class limits which are used.
+If \code{sp} is a numeric vector (such as for the estimation of the 3D diameter distribution from a 2D section of spheres) the function calls
+the EM algorithm as described in [3].
+The return value of the function is an object of class "\code{unfold}" with elements as follows
 \itemize{
 	\item{N_A}{ (trivariate) histogram of section profile parameters}
  \item{N_V}{ (trivariate) histogram of reconstructed parameters}
@@ -44,6 +44,28 @@ The return value of the function is an object of class \code{unfold} whose argum
  \item{breaks}{ list of class limits for binning the parameter values}
 }
 }
+\examples{
+ lam <- 100
+ # parameter rlnorm distribution (radii)
+ theta <- list("size"=list("meanlog"=-2.5,"sdlog"=0.5))
+
+ # simulation bounding box
+ box <- list("xrange"=c(0,5),"yrange"=c(0,5),"zrange"=c(0,5))
+ # simulate only 3D system
+ S <- simPoissonSystem(theta,lam,size="rlnorm",box=box,type="spheres",
+   perfect=TRUE, pl=1)
+
+ # intersect
+ sp <- planarSection(S,d=2.5,intern=TRUE,pl=1)
+
+ # unfolding
+ ret <- unfold(sp,nclass=25)
+ cat("Intensities: ", sum(ret$N_V)/25, "vs.",lam,"\\n")
+
+}
 \seealso{
 \code{\link{setbreaks}}, \code{\link{binning3d}}
+}
+\author{
+M. Baaske
 }

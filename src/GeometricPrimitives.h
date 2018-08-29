@@ -18,6 +18,21 @@ extern "C" void ContactRadius(double *u, double *li, double *lj, double *ri, dou
 
 namespace STGM {
 
+// Information about the intersection set
+  enum IntersectionType  {
+    EMPTY=0,          // 0
+    NON_EMPTY,        // 1
+    POINT,            // 2
+    LINE,             // 3
+    LINES,            // 4
+    DISC,       	  // 5
+    CAP,		      // 6
+    ELLIPSE,          // 7
+    ELLIPSE_ARC,      // 8
+    ELLIPSE_SEGMENT,  // 9
+    ELLIPSE_2D        // 10
+  };
+
   /** some type definitions */
   typedef std::vector<STGM::CPoint2d> PointVector2d;
   typedef std::vector<STGM::CPoint2d>::iterator PointIterator;
@@ -41,15 +56,46 @@ namespace STGM {
       */
 
      CWindow(double a, double b)
-      : m_center(STGM::CVector2d(0.5*a,0.5*b)),
-        m_u(STGM::CVector2d(1.0,0.0)),
-        m_v(STGM::CVector2d(0.0,1.0)),
-        m_size(STGM::CPoint2d(a,b))
+      : m_size(STGM::CPoint2d(a,b)),
+		m_center(STGM::CVector2d(0.5*a,0.5*b)),
+		m_low(0,0),
+		m_up(a,b),
+		m_u(STGM::CVector2d(1.0,0.0)),
+        m_v(STGM::CVector2d(0.0,1.0))
      {
          m_axis[0] = &m_u;
          m_axis[1] = &m_v;
          m_extent[0] = 0.5*a;
          m_extent[1] = 0.5*b;
+     }
+
+     CWindow(STGM::CPoint2d p)
+       : m_size(p),
+		 m_center(STGM::CVector2d(0.5*p[0],0.5*p[1])),
+		 m_low(0,0),
+		 m_up(p[0],p[1]),
+		 m_u(STGM::CVector2d(1.0,0.0)),
+		 m_v(STGM::CVector2d(0.0,1.0))
+	  {
+		  m_axis[0] = &m_u;
+		  m_axis[1] = &m_v;
+		  m_extent[0] = 0.5*p[0];
+		  m_extent[1] = 0.5*p[1];
+	  }
+
+
+     CWindow(double xrange[2], double yrange[2])
+      :  m_size(STGM::CPoint2d(std::fabs(xrange[1]-xrange[0]),std::fabs(yrange[1]-yrange[0]))),
+		 m_center(STGM::CVector2d(xrange[1]-0.5*m_size[0],yrange[1]-0.5*m_size[1])),
+         m_low(xrange[0],yrange[0]),
+         m_up(xrange[1],yrange[1]),
+		 m_u(STGM::CVector2d(1.0,0.0)),
+		 m_v(STGM::CVector2d(0.0,1.0))
+     {
+    	 m_axis[0] = &m_u;
+    	 m_axis[1] = &m_v;
+    	 m_extent[0] = 0.5*m_size[0];
+    	 m_extent[1] = 0.5*m_size[1];
      }
 
      /**
@@ -62,10 +108,12 @@ namespace STGM {
       */
 
      CWindow(double center[2], double a, double b )
-       : m_center(STGM::CVector2d(center[0],center[1])),
-         m_u(STGM::CVector2d(1.0,0.0)),
-         m_v(STGM::CVector2d(0.0,1.0)),
-         m_size(STGM::CPoint2d(a,b))
+       : m_size(STGM::CPoint2d(a,b)),
+		 m_center(STGM::CVector2d(center[0],center[1])),
+		 m_low(center[0]-0.5*a,center[1]-0.5*b),
+		 m_up(center[0]+0.5*a,center[1]+0.5*b),
+		 m_u(STGM::CVector2d(1.0,0.0)),
+         m_v(STGM::CVector2d(0.0,1.0))
      {
         m_axis[0] = &m_u;
         m_axis[1] = &m_v;
@@ -74,9 +122,11 @@ namespace STGM {
      }
 
      CWindow(const CWindow &other) :
-       m_center(other.m_center),
-       m_u(other.m_u), m_v(other.m_v),
-       m_size(other.m_size)
+    	 m_size(other.m_size),
+    	 m_center(other.m_center),
+		 m_low(other.m_low),
+		 m_up(other.m_up),
+		 m_u(other.m_u), m_v(other.m_v)
      {
        m_axis[0] = &m_u;
        m_axis[1] = &m_v;
@@ -97,10 +147,11 @@ namespace STGM {
 
      double PointInWindow(STGM::CVector2d point);
 
+     STGM::CPoint2d  m_size;
      STGM::CVector2d m_center;
+     STGM::CVector2d m_low, m_up;
      STGM::CVector2d m_u, m_v, *m_axis[2];
      double m_extent[2];
-     STGM::CPoint2d m_size;
 
    };
 
@@ -114,8 +165,19 @@ namespace STGM {
   public:
     CGeometry() {};
     virtual ~CGeometry() {};
-    virtual bool isInWindow(CWindow &win) { return false; };
-    virtual bool isInside(double x, double y) { return false; };
+
+    /** not really meaningful, but overloaded anyway! */
+    virtual bool isInWindow(CWindow &win)
+     { return win.PointInWindow(CVector2d(0,0)) == 0; };
+
+    virtual bool isInside(double x=0.0, double y=0.0)
+     { return x != y; };
+
+    virtual void move(CVector2d &v)
+     { v[0]=0; v[1]=0;
+       return;
+     }								/* move 2D object relative to window [0,0] */
+
     virtual PointVector2d getMinMaxPoints() { return PointVector2d(); }
   };
 
@@ -159,7 +221,8 @@ namespace STGM {
           c=n.dot(_p);
        }
 
-       CPlane (const CVector3d &_n, const double &_c = 0.0) : n(_n), c(_c) {}
+       CPlane (const CVector3d &_n, const double &_c = 0.0) : n(_n), c(_c)
+       {}
 
        inline double distanceTo ( const CVector3d &p) const {
          return n.dot(p)-c;
@@ -189,11 +252,28 @@ namespace STGM {
            return l;
         }
 
+
+        void getPlaneIdx(int &i, int &j) {
+			switch(idx()) {
+			  case 0: i=1; j=2; break; // YZ
+			  case 1: i=0; j=2; break; // XZ
+			  case 2: i=0; j=1; break; // XY
+			}
+		}
+
+        void getPlaneIdx(int &i, int &j, int &k) {
+			switch(idx()) {
+			  case 0: i=1; j=2; k=0; break; // YZ
+			  case 1: i=0; j=2; k=1; break; // XZ
+			  case 2: i=0; j=1; k=2; break; // XY
+			}
+		}
+
         CVector3d n;
         double c;
    };
 
-   typedef std::vector<STGM::CPlane> LateralPlanes;
+   typedef std::vector<CPlane> LateralPlanes;
 
    /**
     * @brief Circle 3d
@@ -202,21 +282,21 @@ namespace STGM {
    {
    public:
      CCircle3 () :
-       m_center(CVector3d(0,0,0)), m_n(CVector3d(0,0,1)), m_plane(STGM::CPlane()), m_radius(0), m_id(0)
+       m_center(CVector3d(0,0,0)), m_n(CVector3d(0,0,1)), m_plane(CPlane()), m_radius(0), m_id(0)
      {
        setPlaneIdx();
      };
 
      ~CCircle3 (){};
 
-     CCircle3(CVector3d &_center,double &_radius, CVector3d &_n, int id = 0)
-       : m_center(_center), m_n(_n), m_plane(STGM::CPlane(_n)), m_radius(_radius), m_id(id)
+     CCircle3(CVector3d &_center, double _radius, CVector3d &_n, int id = 0)
+       : m_center(_center), m_n(_n), m_plane(CPlane(_n)), m_radius(_radius), m_id(id)
      {
        setPlaneIdx();
      }
 
-     CCircle3(CVector3d &_center, double &_radius )
-       : m_center(_center), m_n(CVector3d(0,0,1)), m_plane(STGM::CPlane()), m_radius(_radius), m_id(0)
+     CCircle3(CVector3d &_center, double _radius )
+       : m_center(_center), m_n(CVector3d(0,0,1)), m_plane(CPlane()), m_radius(_radius), m_id(0)
       {
         setPlaneIdx();
       }
@@ -230,13 +310,18 @@ namespace STGM {
      }
 
      void setPlane(CPlane& plane) {
-       m_plane =plane;
+       m_plane = plane;
        m_n = m_plane.n;
        setPlaneIdx();
      }
 
-     STGM::CPoint2d PointOnCircle(const double t) {
-       return STGM::CPoint2d( m_center[m_i]+m_radius*cos(t), m_center[m_j]+m_radius*sin(t) );
+     CPoint2d PointOnCircle(const double t) {
+       return CPoint2d( m_center[m_i]+m_radius*cos(t), m_center[m_j]+m_radius*sin(t) );
+     }
+
+     void move(CVector2d &v) {
+    	 m_center[m_i] -= v[0];
+    	 m_center[m_j] -= v[1];
      }
 
      /**
@@ -245,7 +330,7 @@ namespace STGM {
       * @param P         Point vector of sampled points
       * @param np        number of points to sample
       */
-     void samplePoints(STGM::PointVector2d &P, int np) {
+     void samplePoints(PointVector2d &P, int np) {
        double t=0.0, s=2.0*M_PI / (double)np;
        for(int k=0; k<np; ++k) {
            P.push_back( PointOnCircle(t) );
@@ -253,14 +338,13 @@ namespace STGM {
        }
      }
 
-
      inline int Id() { return m_id; }
 
      CVector3d & center() { return m_center; }
      const CVector3d center() const { return m_center; }
 
      double & r() { return m_radius; }
-     const double r() const { return m_radius; }
+     double r() const { return m_radius; }
 
      CVector3d& n() { return m_n; }
      const CVector3d n() const { return m_n; }
@@ -275,8 +359,8 @@ namespace STGM {
 
      CBoundingRectangle & getBoundingRectangle() { return m_br; };
 
-     inline bool isInWindow(STGM::CWindow &win) {
-      if( win.PointInWindow( STGM::CVector2d(m_center[m_i],m_center[m_j])) == 0)
+     inline bool isInWindow(CWindow &win) {
+      if( win.PointInWindow(CVector2d(m_center[m_i],m_center[m_j])) == 0)
        return true;
       return false;
      }
@@ -284,7 +368,7 @@ namespace STGM {
      inline double area() { return M_PI*m_radius*m_radius; }
 
      CVector3d m_center, m_n;
-     STGM::CPlane m_plane;
+     CPlane m_plane;
      double m_radius;
      int m_i, m_j;
      CBoundingRectangle m_br;
@@ -296,15 +380,17 @@ namespace STGM {
 
    class CSphere :  public CGeometry {
       public:
-       const char *m_label;
+        const char *m_label;
 
-        CSphere(double _x, double _y, double _z, double _r, int id=0, const char *label = "N", int interior=1)
-         : m_label(label), m_crack(0), m_id(id), m_center(CVector3d(_x,_y,_z)), m_r(_r), m_interior(interior)
+        CSphere(double _x, double _y, double _z, double _r, int id = 0, const char *label = "N", int interior = 1)
+         : m_label(label), m_crack(0), m_id(id), m_center(CVector3d(_x,_y,_z)),
+		   m_r(_r), m_interior(interior)
         {
         }
 
-        CSphere(const CVector3d &_center, const double &_r, const int id, const char *label = "N", int interior=1)
-         : m_label(label), m_crack(0), m_id(id), m_center(_center), m_r(_r), m_interior(interior)
+        CSphere(const CVector3d &_center, const double _r, const int id, const char *label = "N", int interior=1)
+         : m_label(label), m_crack(0), m_id(id), m_center(_center),
+		   m_r(_r), m_interior(interior)
         {
         }
 
@@ -375,7 +461,7 @@ namespace STGM {
   public:
 
     CEllipse2() :
-      m_center(STGM::CPoint2d()), m_a(0), m_b(0),  m_phi(0),  m_rot(0), m_id(0), m_type(10)
+      m_center(STGM::CVector2d()), m_a(0), m_b(0),  m_phi(0), m_id(0), m_type(10)
     {
     };
 
@@ -388,20 +474,20 @@ namespace STGM {
      * @param center
      * @param id
      */
-    CEllipse2(STGM::CMatrix2d &A_new, STGM::CPoint2d &center, int id, double rot = 0) :
-       m_center(center), m_A(A_new), m_a(0), m_b(0), m_phi(0), m_rot(rot), m_id(id),  m_type(10)
-        {
-          int n = 2, err = 0;
+    CEllipse2(STGM::CMatrix2d &A, STGM::CVector2d &center, int id) :
+       m_center(center), m_A(A), m_a(0), m_b(0), m_phi(0), m_id(id),  m_type(10)
+    {
+          int n = 2, info = 0;
+
           double B[4];
           B[0] = m_A[0][0];
           B[1] = m_A[1][0];
           B[2] = m_A[0][1];
           B[3] = m_A[1][1];
 
-          double evalf[2] = {0,0};
-
           /** eigenvalue decomposition */
-          real_eval(B,&n,evalf,&err);
+          double eval[2] = {0,0};
+          real_eval(B,&n,eval,&info);
           //Rprintf("B: %f %f %f %f \n", B[0],B[1],B[2],B[3]);
 
           m_majorAxis[0] = B[0];
@@ -409,77 +495,96 @@ namespace STGM {
           m_minorAxis[0] = B[2];
           m_minorAxis[1] = B[3];
 
-          if(!err) {
-        	/* phi is relative to x axis */
-        	/// double cos_phi = B[0];
- 	        /// double sin_phi = B[1];
-
-        	/* phi is relative to z axis */
- 	        double cos_phi = B[1];
-            double sin_phi = B[3];
-
-            m_phi = acos(cos_phi);     // angle in the intersecting plane
-            if( (cos_phi<0 && sin_phi<0) || (cos_phi<0 && sin_phi>=0)) {
-                m_phi = atan(sin_phi/cos_phi)+M_PI;
-            } else if(cos_phi>0 && sin_phi<0) {
-                m_phi = atan(sin_phi/cos_phi)+2*M_PI;
-            }
-
-           /* add offset angle because of 3d rgl image,
-            * Here phi does not match with matrix A.
-            * Leave out otherwise
-            */
-            m_phi += m_rot;
-
-            m_b = 1.0/sqrt(evalf[1]);
-            m_a = 1.0/sqrt(evalf[0]);
-
+          if(info != 0) {
+        	  error("Eigenvalue decomposition (LAPACK routine) failed in `ellipse2` constructor.");
           } else {
-              error("Error in eigenvalue decomposition (LAPACK) in ellipse construction method.");
+
+           	/* phi is angle in intersecting plane
+           	 * always relative to ´x´ axis */
+        	double cos_phi = B[0];
+        	double sin_phi = B[1];
+
+            /** relative to z axis */
+			//double cos_phi = B[1];
+			//double sin_phi = B[3];
+
+			if( (cos_phi<0 && sin_phi<0) ||
+				(cos_phi<0 && sin_phi>=0))
+			{
+			  m_phi = atan(sin_phi/cos_phi)+M_PI;
+			} else if(cos_phi>0 && sin_phi<0) {
+			  m_phi = atan(sin_phi/cos_phi)+2*M_PI;
+			} else {
+			  m_phi = acos(cos_phi);
+			}
+
+		  	/* axes lengths */
+			m_b = 1.0/sqrt(eval[1]);
+			m_a = 1.0/sqrt(eval[0]);
           }
-          /** @todo : minor/major axis */
 
-        };
-
-    CEllipse2(STGM::CPoint2d &center, STGM::CPoint2d &major, STGM::CPoint2d &minor,
-               double a, double b, int id,  double rot = 0) :
-                 m_center(center), m_a(a), m_b(b), m_phi(0), m_rot(rot), m_id(id), m_type(10),
-                 m_majorAxis(major), m_minorAxis(minor)
-
-    {
-      ComputeMatrix();
     }
 
-    void ComputeMatrix() {
+    /* no re-computation of matrix A */
+    CEllipse2(STGM::CVector2d &center, STGM::CMatrix2d &A, STGM::CVector2d &major,
+    		   STGM::CVector2d &minor, double a,  double b, double phi, int id) :
+		 m_center(center),
+		 m_A(A),
+		 m_a(a),
+		 m_b(b),
+		 m_phi(phi),
+		 m_id(id),
+		 m_type(ELLIPSE_2D),
+		 m_majorAxis(major),
+		 m_minorAxis(minor)
+
+	{}
+
+
+    CEllipse2(STGM::CVector2d &center, STGM::CVector2d &major, STGM::CVector2d &minor,
+               double a,  double b, int id) :
+         m_center(center),
+		 m_a(a),
+		 m_b(b),
+		 m_phi(0),
+		 m_id(id),
+		 m_type(ELLIPSE_2D),
+         m_majorAxis(major),
+		 m_minorAxis(minor)
+
+    {
+    	ComputeMatrix();
+    }
+
+    void ComputeMatrix()
+    {
           STGM::CMatrix2d B;
-          B[0][0] = m_minorAxis[0];
-          B[1][0] = m_minorAxis[1];
-          B[0][1] = m_majorAxis[0];
-          B[1][1] = m_majorAxis[1];
+          B[0][0] = m_majorAxis[0];
+          B[1][0] = m_majorAxis[1];
+          B[0][1] = m_minorAxis[0];
+          B[1][1] = m_minorAxis[1];
 
-          double cos_phi = m_minorAxis[0];
-          double sin_phi = m_minorAxis[1];
+          /** compute A */
+          m_A[0][0] = 1.0 / SQR(m_a);
+	      m_A[1][1] = 1.0 / SQR(m_b);
 
-          /* angle in the intersecting plane relative to z axis */
-          m_phi = acos(cos_phi) ;
-          if( (cos_phi<0 && sin_phi<0) || (cos_phi<0 && sin_phi>=0)) {
+	      m_A = m_A * B;
+		  B.Transpose();
+		  m_A = B * m_A;
+
+		  /* angle in the intersecting plane is relative to ´x´ axis: */
+          double cos_phi = m_majorAxis[0];
+          double sin_phi = m_majorAxis[1];
+
+          if( (cos_phi<0 && sin_phi<0) ||
+        	  (cos_phi<0 && sin_phi>=0)) {
               m_phi = atan(sin_phi/cos_phi)+M_PI;
           } else if(cos_phi>0 && sin_phi<0) {
               m_phi = atan(sin_phi/cos_phi)+2.0*M_PI;
+          } else {
+        	  m_phi = acos(cos_phi);
           }
-
-          /* add offset angle because of 3d rgl image,
-           * Here phi does not match with matrix A.
-           * Leave out otherwise */
-          m_phi += m_rot;
-
-          m_A[0][0] = 1.0 / SQR(m_a);
-          m_A[1][1] = 1.0 / SQR(m_b);
-          m_A = m_A * B;
-          B.Transpose();
-          m_A = B * m_A;
-
-     }
+	}
 
     /**
      * @brief Set dx/dt=0 and dy/dt=0 -> reorder for t values
@@ -534,6 +639,8 @@ namespace STGM {
       return p;
     };
 
+    void move(CVector2d &v) {  m_center -= v; }
+
 
     bool isInside(double x, double y)  {
      double d1 = cos(m_phi)*(x-m_center[0]) + sin(m_phi)*(y-m_center[1]);
@@ -573,10 +680,10 @@ namespace STGM {
      * @return angle major axis to x axis
      */
     double phi() const { return m_phi; }
-    double rot() const { return m_rot; }
     double area() const { return M_PI * m_a *m_b; }
 
-    const STGM::CPoint2d &center()  const { return m_center;}
+    STGM::CVector2d &center() { return m_center;}
+    const STGM::CVector2d &center()  const { return m_center;}
 
     /**
      * @return Ellipse matrix
@@ -628,24 +735,24 @@ namespace STGM {
 
     /** only test if center is within window */
     inline bool isInWindow(STGM::CWindow &win) {
-      if( win.PointInWindow( STGM::CVector2d(m_center[0],m_center[1])) == 0)
+      if( win.PointInWindow(m_center) == 0)
        return true;
      return false;
     }
 
-    STGM::CPoint2d &majorAxis()  { return m_majorAxis; }
-    const STGM::CPoint2d &majorAxis()  const { return m_majorAxis;}
+    STGM::CVector2d &majorAxis()  { return m_majorAxis; }
+    const STGM::CVector2d &majorAxis()  const { return m_majorAxis;}
 
-    STGM::CPoint2d &minorAxis()  { return m_minorAxis;}
-    const STGM::CPoint2d &minorAxis()  const { return m_minorAxis;}
+    STGM::CVector2d &minorAxis()  { return m_minorAxis;}
+    const STGM::CVector2d &minorAxis()  const { return m_minorAxis;}
 
   private:
-    STGM::CPoint2d m_center;
+    STGM::CVector2d m_center;
     CMatrix2d m_A;
-    double m_a, m_b, m_phi, m_rot;
+    double m_a, m_b, m_phi;
     int m_id, m_type;
     CBoundingRectangle m_br;
-    STGM::CPoint2d m_majorAxis, m_minorAxis;
+    STGM::CVector2d m_majorAxis, m_minorAxis;
   };
 
 
@@ -658,27 +765,68 @@ namespace STGM {
   public:
 
       CEllipse3() :
-        m_center(STGM::CVector3d(0,0,0)), m_n(STGM::CVector3d(0,0,1)),
-        m_majorAxis(STGM::CVector3d(0,0,1)), m_minorAxis(STGM::CVector3d(0,0,0)),
-        m_a(1), m_b(1), m_phi(0), m_i(0), m_j(1), m_type(7), m_side(0), m_side0(0)                 /// default values because not intersected yet
+        m_center(STGM::CVector3d(0,0,0)),
+		m_n(STGM::CVector3d(0,0,1)),
+        m_majorAxis(STGM::CVector3d(0,0,1)),
+		m_minorAxis(STGM::CVector3d(0,0,0)),
+		m_plane(STGM::CPlane()),
+        m_a(1),
+		m_b(1),
+		m_phi(0),
+		m_i(0), m_j(1),
+		m_type(7),   // default is a full ellipse in 3D
+		m_side(0),
+		m_side0(0)   // default values for side of caps relative to the plane (not intersected yet)
       {
          m_psi[0] = 0;
          m_psi[1] = 0;
+         setPlaneIdx();
       }
 
       virtual ~CEllipse3() {};
 
-      CEllipse3(STGM::CVector3d &center, STGM::CVector3d &n, /* STGM::CVector3d &u, */
+      CEllipse3(STGM::CVector3d &center, STGM::CVector3d &n,
                 STGM::CVector3d &major,STGM::CVector3d &minor,
-                double a, double b, double phi, double psi0, double psi1) :
-                  m_center(center), m_n(n), m_majorAxis(major), m_minorAxis(minor), m_a(a), m_b(b),
-                  m_phi(phi), m_i(0), m_j(1),
-                  m_type(7), m_side(0),  m_side0(0)     /// default values because not intersected yet
+				STGM::CVector3d &mPoint0, STGM::CVector3d &mPoint1,
+                double a, double b, double phi, double psi0, double psi1,
+				double r0, double r1, int type, int side = 0) :
+         m_center(center),
+		 m_n(n),
+		 m_majorAxis(major),
+		 m_minorAxis(minor),
+		 m_plane(STGM::CPlane(n)),
+		 m_a(a), m_b(b),
+         m_phi(phi), m_i(0), m_j(1),
+         m_type(type),
+		 m_side(side),
+		 m_side0(0)									     	// default values because not intersected yet
       {
         m_psi[0] = psi0;
         m_psi[1] = psi1;
+        setPlaneIdx();										// set m_i and m_j to select coordinates
+
+        if(m_type == ELLIPSE_SEGMENT)
+        {
+        	m_circle1 = CCircle3(mPoint0,r0,n,1);
+        	m_circle2 = CCircle3(mPoint1,r1,n,1);
+        	setReferenceSide();								// set m_side0
+
+        } else if(m_type == ELLIPSE_ARC || m_type == CAP)
+        {
+        	m_circle1 = CCircle3(mPoint0,r0,n,1);
+        	setReferenceSide();
+        }
+
       };
 
+
+      inline void setPlaneIdx() {
+		  switch(m_plane.idx()) {
+			case 0: m_i=1; m_j=2; break; // YZ
+			case 1: m_i=0; m_j=2; break; // XZ
+			case 2: m_i=0; m_j=1; break; // XY
+		  }
+	  }
 
       /**
        *
@@ -757,6 +905,15 @@ namespace STGM {
         x2 = m_center[m_i] + m_a*cos(t+M_PI)*cos(m_phi)-m_b*sin(t+M_PI)*sin(m_phi);
 
         return ( x1<x2 ? STGM::CPoint2d(x1,x2) : STGM::CPoint2d(x2,x1)  );
+     }
+
+     void move(CVector2d &v) {
+    	 m_center[m_i] -= v[0];
+    	 m_center[m_j] -= v[1];
+    	 if(m_type > 7) {
+    		 m_circle1.move(v);
+    		 m_circle2.move(v);
+    	 }
      }
 
      bool isInsideEllipse(double x, double y) {
@@ -844,9 +1001,9 @@ namespace STGM {
       *
       */
      void setReferenceSide() {
-       /// choose either 0
+       // choose either 0
        double t = 0;
-       /// or PI as a point on the ellipse to determine the the cut off side
+       // or PI as a point on the ellipse to determine the the cut off side
        if(m_side<0) t = M_PI;
        m_side0 = whichSide(PointOnEllipse(t),0);
      }
@@ -867,6 +1024,7 @@ namespace STGM {
      /** members */
      STGM::CVector3d m_center, m_n;
      STGM::CVector3d m_majorAxis, m_minorAxis;
+     STGM::CPlane m_plane;
 
      double m_a, m_b;
      double m_phi, m_psi[2];
@@ -874,8 +1032,8 @@ namespace STGM {
      int m_type;                                // ellipse type
      int m_side;                                // side of origin0 to the plane
      int m_side0;                               // side, where extreme points of the ellipse are not cut off by angle psi
-     STGM::CCircle3 m_circle1, m_circle2;       // circle caps if type {ELLIPSE_ARC | ELLIPSE_SEG }
-     STGM::CBoundingRectangle m_br;
+     CCircle3 m_circle1, m_circle2;       // circle caps if type {ELLIPSE_ARC | ELLIPSE_SEG }
+     CBoundingRectangle m_br;
   };
 
   /**
@@ -895,20 +1053,15 @@ namespace STGM {
    class CSpheroid : public CGeometry{
      public:
       const char *m_label;
-      typedef enum { PROLATE = 0, OBLATE = 1 } spheroid_type;
-      typedef enum { UNIFORM_D = 0, BETAISOTROP_D = 1, MISES_D = 2} direction_type;
 
-     CSpheroid(CVector3d center, double a, double c, double b, CVector3d u,
-                 double alpha, double theta, double phi, double r, int id,
-                 const char *label="N", int interior=1)
-     :  m_label(label),
+      CSpheroid(CVector3d center, double a, double c, double b, CVector3d u,
+                 double theta, double phi, int id, const char *label="N", int interior=1)
+      : m_label(label),
         m_center(center),
         m_u(u),
-        m_a(a), m_b(b), m_c(c), 		// a,c: are 1st and 2nd shorter semi-axes, b:   longer semi-axis
-	    m_alpha(alpha),
-        m_theta(theta),
+        m_a(a), m_b(b), m_c(c), 		/* a,c are 1st and 2nd semi-minor lengths, b is semi-major length (conform with FBA implementation) */
+	    m_theta(theta),
         m_phi(phi),
-        m_r(r),
         m_id(id),
         m_crack(0),
         m_interior(interior)
@@ -921,7 +1074,7 @@ namespace STGM {
        /**
         * @return rotation matrix
         */
-       const CMatrix3d &rotationMatrix() const { return m_R; }
+       const CMatrix3d & rotationMatrix() const { return m_R; }
 
        double distance(CSpheroid &s) {  return spheroidDistanceAsCylinder(s);  }
 
@@ -976,8 +1129,7 @@ namespace STGM {
        double c() const { return m_c;  }
        double b() const { return m_b;  }
 
-       double alpha() const { return m_alpha;  }
-
+       CVector3d& u() { return m_u; }
        const CVector3d& u() const { return m_u; }
 
        double phi()   const { return m_phi; }
@@ -989,19 +1141,14 @@ namespace STGM {
        int &interior() { return m_interior; }
        int interior() const { return m_interior; }
 
-       double &radius() { return m_r; }
-       double radius() const { return m_r; }
-
        const char * label() const { return m_label; }
-
-       inline bool isInWindow(STGM::CWindow &win) {   return false;   }
 
 
     private:
       CVector3d m_center, m_u;
       double m_a, m_b, m_c;
-      double m_alpha,m_theta, m_phi, m_r;
-      int m_id, m_crack,m_interior;
+      double m_theta, m_phi;
+      int m_id, m_crack, m_interior;
       CMatrix3d m_R, m_A, m_invA;
 
    };
@@ -1014,17 +1161,14 @@ namespace STGM {
     {
     public:
       const char *m_label;
-      typedef enum { UNIFORM_D = 0, BETAISOTROP_D = 1, MISES_D = 2} direction_type;
-      typedef enum { ELONG = 0, SPHERO = 1 } cylinder_type;
 
       CCylinder(CVector3d &center, CVector3d &u, double h, double r,
-                 double theta, double phi, double radius, int id, const char *label="N", int interior=1 ) :
+                 double theta, double phi, int id, const char *label="N", int interior=1 ) :
             m_label(label),
             m_center(center),
             m_u(u),
             m_h(h),
             m_r(r),
-            m_radius(radius),
             m_theta(theta),
             m_phi(phi),
             m_id(id),
@@ -1079,12 +1223,6 @@ namespace STGM {
         double &r() { return m_r; }
 
         /**
-        * @return exact simulation radius
-        */
-        double radius() const { return m_radius; }
-        double &radius() { return m_radius; }
-
-        /**
         * @return Height of the Cylinder.
         */
         double h() const { return m_h; }
@@ -1094,6 +1232,7 @@ namespace STGM {
         * @return Polar angle of the Cylinder.
         */
         double theta() const { return m_theta; }
+        double &theta() { return m_theta; }
 
         /**
         * @return Plane angle of the Cylinder.
@@ -1112,7 +1251,6 @@ namespace STGM {
         int &interior() { return m_interior; }
 
         const char * label() const { return m_label; }
-        inline bool isInWindow(STGM::CWindow &win) {   return false;   }
 
         /**
          * @brief Update origins of cylinder after rotation
@@ -1134,12 +1272,10 @@ namespace STGM {
         CVector3d m_center, m_u;
         CVector3d m_origin0, m_origin1;
         CMatrix3d m_R;
-        double m_h, m_r, m_radius;
+        double m_h, m_r;
         double m_theta, m_phi;
         int m_id, m_interior, m_crack;
     };
-
-    typedef std::vector<CCylinder > Cylinders;
 
 
    /**
@@ -1295,8 +1431,14 @@ namespace STGM {
     };
 
 
-   typedef std::vector<CSpheroid> Spheroids;
-   typedef std::vector<CEllipse2> Ellipses;
+    // typedefs 3D
+    typedef std::vector<CSphere> Spheres;
+    typedef std::vector<CSpheroid> Spheroids;
+    typedef std::vector<CCylinder> Cylinders;
+
+    // typedefs 2D
+    typedef std::vector<CEllipse2> Ellipses2;
+    typedef std::vector<CEllipse3> Ellipses3;
 
 
 } /* namespace STGM */

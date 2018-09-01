@@ -1,4 +1,4 @@
-ded106270ccc4a3fe3e4529670d9dd8e *DESCRIPTION
+169bb1028b75f0aca7a1aa05ec49e741 *DESCRIPTION
 2291f5092d0701c25ee7911d336174e5 *NAMESPACE
 4de03606bd861b5aa26c97b77ea64973 *NEWS
 6f00430bd8b038166ef485f188028c3f *R/spheroid.R
@@ -39,7 +39,7 @@ a5a3386825432579d6b6cc8e97a06788 *man/verticalSection.Rd
 d60bc4acf5e7bd6dcb8731efe8eebb7b *src/GeometricPrimitives.h
 c274d01993e1a0f89a536edd40a7e084 *src/Intersector.cpp
 ce8a171091f9175e1a005e4aa7cc4594 *src/Intersector.h
-185c604c85198068f3a8aee39b02ec4a *src/Makevars
+8c3c4fea0148af2b38b9697e23481860 *src/Makevars
 162845c444533f887d218f18b31703e3 *src/Rheaders.h
 f2cac7a37eec87509d8b9760da5449f8 *src/SimPoisson.cpp
 9d2a5ae9769d98c28c2e962b633c79fa *src/SimPoisson.h

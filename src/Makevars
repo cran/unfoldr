@@ -6,7 +6,8 @@ PKG_CFLAGS = $(SHLIB_OPENMP_CFLAGS)
 
 OBJECTS = directions.o GeometricPrimitives.o Intersector.o ellipt.o SimPoisson.o Utils.o unfold.o
 
-all: $(SHLIB) cleanlibs
+## This removed objects in parallel with creating them.
+all: $(SHLIB) #cleanlibs
 cleanlibs:
 	-rm -f $(OBJECTS)
 	

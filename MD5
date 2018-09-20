@@ -1,6 +1,6 @@
-169bb1028b75f0aca7a1aa05ec49e741 *DESCRIPTION
+0d8211ca11333ba0afce070e2b9a56c8 *DESCRIPTION
 2291f5092d0701c25ee7911d336174e5 *NAMESPACE
-4de03606bd861b5aa26c97b77ea64973 *NEWS
+fac31c911feca9205618c5add6aa720f *NEWS
 6f00430bd8b038166ef485f188028c3f *R/spheroid.R
 b8a411f1e13681b236932a2b7e072c48 *R/unfolding.R
 75259d5138b1041e236e23ff134ce1dd *R/unfoldr-package.R
@@ -39,12 +39,12 @@ a5a3386825432579d6b6cc8e97a06788 *man/verticalSection.Rd
 d60bc4acf5e7bd6dcb8731efe8eebb7b *src/GeometricPrimitives.h
 c274d01993e1a0f89a536edd40a7e084 *src/Intersector.cpp
 ce8a171091f9175e1a005e4aa7cc4594 *src/Intersector.h
-8c3c4fea0148af2b38b9697e23481860 *src/Makevars
+b90c488edb18aa3ba6e9272b4719393e *src/Makevars
 162845c444533f887d218f18b31703e3 *src/Rheaders.h
-f2cac7a37eec87509d8b9760da5449f8 *src/SimPoisson.cpp
-9d2a5ae9769d98c28c2e962b633c79fa *src/SimPoisson.h
-3de6a1adeef0231c680ac7576239c29a *src/Utils.cpp
-cf53ad4fd34d32077d5ceb5b47c473b4 *src/Utils.h
+f179d95104d55b820f5bf4a759639262 *src/SimPoisson.cpp
+f8bc4a99bba7b15d08a0d4c475e8c88e *src/SimPoisson.h
+650fab94988afda58cdb8bef8d9c6b53 *src/Utils.cpp
+bf6e41e8c619a9142abd8a53b7bca01a *src/Utils.h
 8e839b6372742dd06bc4fe71d26f67d3 *src/Vector.h
 d334b7ecef3d560fdb39406f1599c7d5 *src/directions.cpp
 d2de2387c1655bbc3b8c50228a21b1c7 *src/directions.h

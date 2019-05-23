@@ -1,10 +1,10 @@
-0d8211ca11333ba0afce070e2b9a56c8 *DESCRIPTION
+abc6d65040c0de5fe4c1485bfd9a81a8 *DESCRIPTION
 2291f5092d0701c25ee7911d336174e5 *NAMESPACE
 fac31c911feca9205618c5add6aa720f *NEWS
-6f00430bd8b038166ef485f188028c3f *R/spheroid.R
+dd31a8f112bcda6880e79b68a7b35687 *R/spheroid.R
 b8a411f1e13681b236932a2b7e072c48 *R/unfolding.R
 75259d5138b1041e236e23ff134ce1dd *R/unfoldr-package.R
-c423b94544af03f58ca7dd9180413267 *data/data15p.rda
+5e0e678ea6ee5f340cf727d0df8cb557 *data/data15p.rda
 c929c607530e4f1fd91e1f70922eba8a *inst/COPYRIGHTS
 2cf4673170bd78deba4de32183bf988b *inst/examples/almmc.R
 ada0f39d15b5a3dcacd14ba9fbc1fc57 *inst/examples/coeffarray.R
@@ -39,9 +39,9 @@ a5a3386825432579d6b6cc8e97a06788 *man/verticalSection.Rd
 d60bc4acf5e7bd6dcb8731efe8eebb7b *src/GeometricPrimitives.h
 c274d01993e1a0f89a536edd40a7e084 *src/Intersector.cpp
 ce8a171091f9175e1a005e4aa7cc4594 *src/Intersector.h
-b90c488edb18aa3ba6e9272b4719393e *src/Makevars
+20508dff186ecbc83b9aa947fcea70c5 *src/Makevars
 162845c444533f887d218f18b31703e3 *src/Rheaders.h
-f179d95104d55b820f5bf4a759639262 *src/SimPoisson.cpp
+b881c2a480df1bc6d7e65c1d6ca40ca5 *src/SimPoisson.cpp
 f8bc4a99bba7b15d08a0d4c475e8c88e *src/SimPoisson.h
 650fab94988afda58cdb8bef8d9c6b53 *src/Utils.cpp
 bf6e41e8c619a9142abd8a53b7bca01a *src/Utils.h

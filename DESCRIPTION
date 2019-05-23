@@ -1,15 +1,15 @@
 Package: unfoldr
 Title: Stereological Unfolding for Spheroidal Particles
-Version: 0.6.9
-Date: 2018-09-20
+Version: 0.7
+Date: 2019-05-22
 Authors@R: c(person("Markus Baaske", role = c("aut", "cre"),
-			 email = "markus.baaske@uni-jena.de"),
+			 email = "mafr2007@gmail.com"),
 			 person("Felix", "Ballani", role = "ctb",
 			 email = "ballani@math.tu-freiberg.de")
 			)
 Author: Markus Baaske [aut, cre],
   Felix Ballani [ctb]
-Maintainer: Markus Baaske <markus.baaske@uni-jena.de>
+Maintainer: Markus Baaske <mafr2007@gmail.com>
 Description: Stereological unfolding of the joint size-shape-orientation distribution of spheroidal shaped particles.
 Depends: R (>= 3.3.0)
 Suggests: rgl, plotrix
@@ -17,7 +17,9 @@ License: GPL (>= 3)
 Repository/R-Forge/Project: unfoldr
 Repository: CRAN
 LazyData: no
-RoxygenNote: 6.1.0
+RoxygenNote: 6.1.1
+Repository/R-Forge/Revision: 238
+Repository/R-Forge/DateTimeStamp: 2019-05-22 20:28:49
+Date/Publication: 2019-05-23 08:40:03 UTC
 NeedsCompilation: yes
-Packaged: 2018-09-20 18:58:25 UTC; root
-Date/Publication: 2018-09-20 20:40:03 UTC
+Packaged: 2019-05-22 20:52:37 UTC; rforge

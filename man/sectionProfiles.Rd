@@ -38,7 +38,7 @@ angles are automatically transformed to \eqn{[0,\pi/2]} as required by the unfol
  AC <- data.matrix(data15p[c("A","C")])/1000	
 
  # selecting the minor semi-axis for prolate type of spheroids:
- # independent of nomenclature (always named \\code{A})
+ # independent of nomenclature (always named \code{A})
  sp <- sectionProfiles(AC,unlist(data15p["alpha"]))
 
  summary(sp$A)			# here minor semi-axis because of prolate

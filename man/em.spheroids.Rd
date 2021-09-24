@@ -49,7 +49,7 @@ S <- simPoissonSystem(theta,lam,size="rlnorm",
 ## unfolding
 sp <- verticalSection(S,2.5)
 ret <- unfold(sp,c(7,6,5),kap=1.25)
-cat("Intensities: ", sum(ret$N_V)/25, "vs.",lam,"\\n")
+cat("Intensities: ", sum(ret$N_V)/25, "vs.",lam,"\n")
 }
 \references{
 Bene\eqn{\check{\textrm{s}}}, V. and Rataj, J. Stochastic Geometry: Selected Topics Kluwer Academic Publishers, Boston, 2004

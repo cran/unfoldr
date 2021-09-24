@@ -10,9 +10,10 @@
  * @author: M. Baaske
  */
 
-#include "R.h"
-#include "Rmath.h"
 #include "Vector.h"
+//#include "R.h"
+#include "Rmath.h"
+//#include "Vector.h"
 
 using namespace std;
 

@@ -7,7 +7,7 @@
 
 #define MAX_ITER 100
 
-#include "directions.h"
+//#include "directions.h"
 #include "SimPoisson.h"
 
 //static locals

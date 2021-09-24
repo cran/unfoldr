@@ -4,9 +4,11 @@
 \name{data15p}
 \alias{data15p}
 \title{Intersection ellipses parameters}
-\format{A matrix of columns named \code{A} (major semi-axis length), \code{C} (minor semi-axis length),
+\format{
+A matrix of columns named \code{A} (major semi-axis length), \code{C} (minor semi-axis length),
 	\code{S=C/A} (shape factor), \code{alpha} (polar angle in the intersecting plane) and coordinates \code{(x,y)}
- of the centers of fitted ellipses.}
+ of the centers of fitted ellipses.
+}
 \usage{
 data(data15p)
 }

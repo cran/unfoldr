@@ -4,8 +4,7 @@
 \alias{unfold}
 \title{Stereological unfolding}
 \usage{
-unfold(sp, nclass, maxIt = 64, nCores = getOption("par.unfoldr", 2L),
-  ...)
+unfold(sp, nclass, maxIt = 64, nCores = getOption("par.unfoldr", 2L), ...)
 }
 \arguments{
 \item{sp}{section profiles, see \code{\link{sectionProfiles}}}
@@ -60,7 +59,7 @@ The return value of the function is an object of class "\code{unfold}" with elem
 
  # unfolding
  ret <- unfold(sp,nclass=25)
- cat("Intensities: ", sum(ret$N_V)/25, "vs.",lam,"\\n")
+ cat("Intensities: ", sum(ret$N_V)/25, "vs.",lam,"\n")
 
 }
 \seealso{

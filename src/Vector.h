@@ -7,12 +7,18 @@
 #ifndef VECTOR_H_
 #define VECTOR_H_
 
-#include <R.h>
-
 #include <cmath>
 #include <cstring>
 #include <vector>
 #include <algorithm>
+
+
+#include <R.h>
+
+//#include <cmath>
+//#include <cstring>
+//#include <vector>
+//#include <algorithm>
 
 template<class T>
 inline T SQR(const T a) {return a*a;}

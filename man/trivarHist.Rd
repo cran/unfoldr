@@ -4,8 +4,7 @@
 \alias{trivarHist}
 \title{Trivariate histogram}
 \usage{
-trivarHist(A, main = paste("Trivariate Histogram"), scale = 0.5, col,
-  ...)
+trivarHist(A, main = paste("Trivariate Histogram"), scale = 0.5, col, ...)
 }
 \arguments{
 \item{A}{3D array of count data (estimated histogram), see \code{\link{unfold}}}

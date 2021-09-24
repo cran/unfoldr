@@ -4,8 +4,12 @@
 \alias{coefficientMatrixSpheroids}
 \title{Coefficients for trivariate unfolding}
 \usage{
-coefficientMatrixSpheroids(breaks, stype = c("prolate", "oblate"),
-  check = TRUE, nCores = getOption("par.unfoldr", 1))
+coefficientMatrixSpheroids(
+  breaks,
+  stype = c("prolate", "oblate"),
+  check = TRUE,
+  nCores = getOption("par.unfoldr", 1)
+)
 }
 \arguments{
 \item{breaks}{list of bin vectors, see \code{\link{setbreaks}}}

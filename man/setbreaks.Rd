@@ -4,8 +4,7 @@
 \alias{setbreaks}
 \title{Break vectors}
 \usage{
-setbreaks(nclass, maxSize, base = NULL, kap = 1,
-  sizeType = c("linear", "exp"))
+setbreaks(nclass, maxSize, base = NULL, kap = 1, sizeType = c("linear", "exp"))
 }
 \arguments{
 \item{nclass}{number of classes}

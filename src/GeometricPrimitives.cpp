@@ -48,8 +48,9 @@ do {                                               \
 
 #define sgn(x) ((x) > 0 ? 1 : -1)
 
-#include <R_ext/Lapack.h>
+//#include <R_ext/Lapack.h>
 #include "GeometricPrimitives.h"
+#include <R_ext/Lapack.h>
 
 using namespace std;
 

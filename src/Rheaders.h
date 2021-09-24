@@ -9,7 +9,7 @@
 #include <R.h>
 #include <Rmath.h>
 #include <Rdefines.h>
-#include <R_ext/Utils.h>
+//#include <R_ext/Utils.h>
 
 /* definitions not involving SEXPs, plus _() */
 

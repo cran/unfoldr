@@ -4,12 +4,25 @@
 \alias{simPoissonSystem}
 \title{Poisson germ-grain process}
 \usage{
-simPoissonSystem(theta, lam, size = "const", shape = "const",
-  orientation = "rbetaiso", type = c("prolate", "oblate", "spheres",
-  "cylinders"), rjoint = NULL, box = list(c(0, 1)), mu = c(0, 0, 1),
-  dz = 0, n = c(0, 1, 0), intersect = c("original", "full", "only",
-  "digi"), delta = 0.01, intern = FALSE, perfect = FALSE, pl = 0,
-  label = "N")
+simPoissonSystem(
+  theta,
+  lam,
+  size = "const",
+  shape = "const",
+  orientation = "rbetaiso",
+  type = c("prolate", "oblate", "spheres", "cylinders"),
+  rjoint = NULL,
+  box = list(c(0, 1)),
+  mu = c(0, 0, 1),
+  dz = 0,
+  n = c(0, 1, 0),
+  intersect = c("original", "full", "only", "digi"),
+  delta = 0.01,
+  intern = FALSE,
+  perfect = FALSE,
+  pl = 0,
+  label = "N"
+)
 }
 \arguments{
 \item{theta}{list of simulation parameters which must consist of elements: \code{size}, \code{shape} and \code{orientation}}
@@ -59,7 +72,7 @@ The function can simulate a Poisson germ-grain process according to the paramete
 The positions of the germs follow a uniform distribution according to a Poisson process with mean intensity parameter \code{lam}.
 The function either randomly generates \code{type="prolate"} or \code{type="oblate"} spheroids, spheres or spherocylinders.
 The argument \code{size} sets the name of the distribution function for the size/length of the objects, i.e. the major semi-axis
-lengths in case of spheroids, radii for spheres or the lengths of the main axis of rotation for spherocylinders including the end caps.
+lengths in case of spheroids, radii for spheres or the lengths of the main axis of rotation for spherocylinders including the end caps. 
 
 The following direction (orientation) distributions of the spheroids' major-axis, respectively, cylinders' main axis are available:
 a uniform distribution ("\code{runifdir}"), distribution ("\code{rbetaiso}") and the "\emph{von Mises-Fisher}" ("\code{rvMisesFisher}")
@@ -69,7 +82,7 @@ with polar angle \eqn{\vartheta\in[0,\pi/2)} and azimuthal angle \eqn{\phi\in[0,
 argument \code{box} contains only a single range, i.e. \code{box=list(c(0,1))}, this limit isassumed for the remaining dimensions which is then simply replicated.
 The optional argument \code{rjoint} defines a (joint) distribution function which can be any function provided by the user in order to generate
 the required distributional parameters for the spheroids or spherocylinders. For an in-depth example of usage please see the workflow in 'simSpheroids.R'
-and 'simCylinders.R'.
+and 'simCylinders.R'. 
 
 In addition, the function supports an exact simulation type [2] of the grains. In case of spheroids and spherocylinders setting \code{size="rbinorm"}
 declares a bivariate size-shape distribution for which the exact simulation is available. More specifically, for a bivariate normal random vector \eqn{[X,Y]}
@@ -97,7 +110,7 @@ for unfolding the joint size-shape-orientation distribution of spherocylinders s
  box <- list("xrange"=c(0,5),"yrange"=c(0,5),"zrange"=c(0,5))
 
  # log normal size distribution with a constant shape factor and
- # concentration parameter (\\code{kappa=1}) for the orientation, see reference [1] 
+ # concentration parameter (\code{kappa=1}) for the orientation, see reference [1] 
  theta <- list("size"=list("meanlog"=-2.5,"sdlog"=0.5),
                "shape"=list("s"=0.5),
                "orientation"=list("kappa"=1))

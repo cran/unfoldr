@@ -195,7 +195,7 @@ image(1:nrow(W),1:ncol(W),W,col=gray(1:0))
 ret <- unfold(sp,nclass=25)
 
 ## Point process intensity
-cat("Intensities: ", sum(ret$N_V)/25, "vs.",lam,"\\n")
+cat("Intensities: ", sum(ret$N_V)/25, "vs.",lam,"\n")
 
 ## original diameters
 r3d <- unlist(lapply(S,function(x) 2*x$r))
